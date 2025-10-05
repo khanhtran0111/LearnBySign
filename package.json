@@ -1,0 +1,13 @@
+{
+  "name": "learnbysign-root",
+  "private": true,
+  "scripts": {
+    "dev:frontend": "npm --prefix ./front_end run dev",
+    "dev:backend": "npm --prefix ./back_end run start:dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "lint": "echo \"Run lint inside each project\" && exit 0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

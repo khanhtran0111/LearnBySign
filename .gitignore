@@ -1,0 +1,12 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnp/
+.env
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
