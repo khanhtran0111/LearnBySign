@@ -10,12 +10,27 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
+const config_1 = require("@nestjs/config");
+const mongoose_1 = require("@nestjs/mongoose");
+const sequences_module_1 = require("./sequences/sequences.module");
+const predictions_module_1 = require("./predictions/predictions.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
-        imports: [],
+        imports: [
+            config_1.ConfigModule.forRoot({ isGlobal: true }),
+            mongoose_1.MongooseModule.forRootAsync({
+                inject: [config_1.ConfigService],
+                useFactory: (cfg) => ({
+                    uri: cfg.get('MONGODB_URI'),
+                    serverSelectionTimeoutMS: 5000,
+                }),
+            }),
+            sequences_module_1.SequencesModule,
+            predictions_module_1.PredictionsModule,
+        ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],
     })
