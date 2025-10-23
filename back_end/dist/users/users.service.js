@@ -117,6 +117,21 @@ let UsersService = class UsersService {
             throw new common_1.NotFoundException();
         return { ok: true };
     }
+    async changePassword(id, currentPassword, newPassword) {
+        const user = await this.userModel.findById(id);
+        if (!user)
+            throw new common_1.NotFoundException();
+        const ok = await argon2.verify(user.passwordHash, currentPassword);
+        if (!ok)
+            throw new common_1.UnauthorizedException('Mật khẩu hiện tại không đúng');
+        user.passwordHash = await argon2.hash(newPassword);
+        try {
+            user.security = { ...user.security, passwordUpdatedAt: new Date() };
+        }
+        catch { }
+        await user.save();
+        return { ok: true };
+    }
 };
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([

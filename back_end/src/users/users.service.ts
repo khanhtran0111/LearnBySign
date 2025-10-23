@@ -1,5 +1,4 @@
-// src/users/users.service.ts
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User, UserDocument } from './schemas/user.schema';
@@ -73,6 +72,20 @@ export class UsersService {
       )
       .lean();
     if (!doc) throw new NotFoundException();
+    return { ok: true };
+  }
+
+  async changePassword(id: string, currentPassword: string, newPassword: string) {
+    const user = await this.userModel.findById(id);
+    if (!user) throw new NotFoundException();
+
+    const ok = await argon2.verify(user.passwordHash, currentPassword);
+    if (!ok) throw new UnauthorizedException('Mật khẩu hiện tại không đúng');
+
+    user.passwordHash = await argon2.hash(newPassword);
+    try { (user as any).security = { ...(user as any).security, passwordUpdatedAt: new Date() }; } catch {}
+    await user.save();
+
     return { ok: true };
   }
 }

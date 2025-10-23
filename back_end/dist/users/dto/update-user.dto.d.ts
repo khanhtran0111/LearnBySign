@@ -3,16 +3,8 @@ export declare class UpdateUserDto {
     phone?: string;
     birthDate?: string;
     avatarUrl?: string;
-    level?: 'newbie' | 'basic' | 'advanced';
-    preferences?: {
-        language?: 'vi' | 'en';
-        theme?: 'light' | 'dark';
-        subtitles?: boolean;
-        cameraFps?: 15 | 30 | 60;
-    };
-    status?: {
-        isActive?: boolean;
-        emailVerified?: boolean;
-        phoneVerified?: boolean;
-    };
+}
+export declare class ChangePasswordDto {
+    currentPassword: string;
+    newPassword: string;
 }
