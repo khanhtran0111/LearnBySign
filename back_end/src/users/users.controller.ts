@@ -1,24 +1,28 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Req, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateUserDto, ChangePasswordDto } from './dto/update-user.dto';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Users')
+@ApiBearerAuth()
+@UseGuards(AuthGuard('jwt'))
 @Controller('users')
 export class UsersController {
   constructor(private readonly svc: UsersService) {}
 
-  @Post()
-  create(@Body() dto: CreateUserDto) {
-    return this.svc.create(dto);
+  @Get('me')
+  me(@Req() req: any) {
+    return this.svc.findById(req.user.sub);
   }
 
-  @Get(':id')
-  get(@Param('id') id: string) {
-    return this.svc.findById(id);
+  @Patch('me')
+  updateMe(@Req() req: any, @Body() body: UpdateUserDto) {
+    return this.svc.update(req.user.sub, body);
   }
 
-  @Patch(':id')
-  patch(@Param('id') id: string, @Body() body: UpdateUserDto) {
-    return this.svc.update(id, body);
+  @Patch('me/password')
+  changePassword(@Req() req: any, @Body() body: ChangePasswordDto) {
+    return this.svc.changePassword(req.user.sub, body.currentPassword, body.newPassword);
   }
 }

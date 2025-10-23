@@ -61,4 +61,7 @@ export declare class UsersService {
     softDelete(id: string): Promise<{
         ok: boolean;
     }>;
+    changePassword(id: string, currentPassword: string, newPassword: string): Promise<{
+        ok: boolean;
+    }>;
 }
