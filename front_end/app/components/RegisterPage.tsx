@@ -1,0 +1,256 @@
+"use client";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Card } from "./ui/card";
+import { Hand, Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
+import { ImageWithFallback } from "./fallback/ImageWithFallback";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+
+const registerSchema = z.object({
+  fullName: z.string().min(2, { message: "Họ tên phải có ít nhất 2 ký tự" }),
+  email: z.string().email({ message: "Email không hợp lệ" }),
+  password: z.string()
+    .min(6, { message: "Mật khẩu phải có ít nhất 6 ký tự" })
+    .regex(/[A-Z]/, { message: "Mật khẩu phải có ít nhất 1 chữ hoa" })
+    .regex(/[0-9]/, { message: "Mật khẩu phải có ít nhất 1 chữ số" }),
+  confirmPassword: z.string(),
+  role: z.enum(["parent", "teacher", "student"], {
+    required_error: "Vui lòng chọn vai trò",
+  }),
+  phone: z.string()
+    .min(10, { message: "Số điện thoại phải có ít nhất 10 số" })
+    .regex(/^[0-9]+$/, { message: "Số điện thoại chỉ được chứa số" }),
+  agreeTerms: z.boolean().refine((val) => val === true, {
+    message: "Bạn phải đồng ý với điều khoản sử dụng",
+  }),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Mật khẩu xác nhận không khớp",
+  path: ["confirmPassword"],
+});
+
+type RegisterFormValues = z.infer<typeof registerSchema>;
+
+interface RegisterPageProps {
+  onBackToHome: () => void;
+  onSwitchToLogin: () => void;
+  onRegisterSuccess: () => void;
+}
+
+export function RegisterPage({ onBackToHome, onSwitchToLogin, onRegisterSuccess }: RegisterPageProps) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+  });
+
+  const onSubmit = async (data: RegisterFormValues) => {
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    console.log("Register data:", data);
+    onRegisterSuccess();
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 px-4 py-12">
+      <div className="w-full max-w-5xl grid md:grid-cols-2 gap-8 items-center">
+        {/* Left side - Illustration */}
+        <div className="hidden md:block">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-200 to-pink-200 rounded-3xl blur-3xl opacity-30"></div>
+          </div>
+        </div>
+
+        {/* Right side - Register Form */}
+        <Card className="p-8 shadow-xl border-2 max-h-[90vh] overflow-y-auto">
+          <div className="mb-6">
+            <button
+              onClick={onBackToHome}
+              className="flex items-center gap-3 mb-4 hover:opacity-80 transition-opacity"
+            >
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <Hand className="w-6 h-6 text-white" />
+              </div>
+              <h2 className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                LearnBySign
+              </h2>
+            </button>
+            <h1 className="mb-2">Đăng ký tài khoản</h1>
+            <p className="text-muted-foreground">
+              Tạo tài khoản để bắt đầu hành trình học tập
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Họ và tên</Label>
+              <Input
+                id="fullName"
+                type="text"
+                placeholder="Nguyễn Văn A"
+                {...register("fullName")}
+                className={errors.fullName ? "border-red-500" : ""}
+              />
+              {errors.fullName && (
+                <p className="text-sm text-red-500">{errors.fullName.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="your@email.com"
+                {...register("email")}
+                className={errors.email ? "border-red-500" : ""}
+              />
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Số điện thoại</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="0912345678"
+                {...register("phone")}
+                className={errors.phone ? "border-red-500" : ""}
+              />
+              {errors.phone && (
+                <p className="text-sm text-red-500">{errors.phone.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="role">Vai trò</Label>
+              <Select onValueChange={(value) => setValue("role", value as any)}>
+                <SelectTrigger className={errors.role ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Chọn vai trò của bạn" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="student">Học sinh</SelectItem>
+                  <SelectItem value="parent">Phụ huynh</SelectItem>
+                  <SelectItem value="teacher">Giáo viên</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.role && (
+                <p className="text-sm text-red-500">{errors.role.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Mật khẩu</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  {...register("password")}
+                  className={errors.password ? "border-red-500 pr-10" : "pr-10"}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-sm text-red-500">{errors.password.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  {...register("confirmPassword")}
+                  className={errors.confirmPassword ? "border-red-500 pr-10" : "pr-10"}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...register("agreeTerms")}
+                  className="w-4 h-4 mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm">
+                  Tôi đồng ý với{" "}
+                  <a href="#" className="text-blue-600 hover:underline">
+                    điều khoản sử dụng
+                  </a>{" "}
+                  và{" "}
+                  <a href="#" className="text-blue-600 hover:underline">
+                    chính sách bảo mật
+                  </a>
+                </span>
+              </label>
+              {errors.agreeTerms && (
+                <p className="text-sm text-red-500">{errors.agreeTerms.message}</p>
+              )}
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Đang đăng ký..." : "Đăng ký"}
+            </Button>
+
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">
+                Đã có tài khoản?{" "}
+                <button
+                  type="button"
+                  onClick={onSwitchToLogin}
+                  className="text-blue-600 hover:underline"
+                >
+                  Đăng nhập ngay
+                </button>
+              </p>
+            </div>
+          </form>
+        </Card>
+      </div>
+    </div>
+  );
+}
