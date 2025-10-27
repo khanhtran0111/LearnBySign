@@ -19,8 +19,9 @@ const registerSchema = z.object({
     .regex(/[A-Z]/, { message: "Mật khẩu phải có ít nhất 1 chữ hoa" })
     .regex(/[0-9]/, { message: "Mật khẩu phải có ít nhất 1 chữ số" }),
   confirmPassword: z.string(),
-  role: z.enum(["parent", "teacher", "student"], {
-    required_error: "Vui lòng chọn vai trò",
+  role: z.string()
+  .refine((val) => ["parent", "teacher", "student"].includes(val), {
+    message: "Vui lòng chọn vai trò hợp lệ",
   }),
   phone: z.string()
     .min(10, { message: "Số điện thoại phải có ít nhất 10 số" })
@@ -68,6 +69,13 @@ export function RegisterPage({ onBackToHome, onSwitchToLogin, onRegisterSuccess 
         <div className="hidden md:block">
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-200 to-pink-200 rounded-3xl blur-3xl opacity-30"></div>
+            <div className="relative">
+              <ImageWithFallback
+                src="https://images.unsplash.com/photo-1546410531-bb4caa6b424d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaGlsZHJlbiUyMGxlYXJuaW5nJTIwc2lnbiUyMGxhbmd1YWdlfGVufDF8fHx8MTc2MDEzMjE0Nnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+                alt="Học tập"
+                className="w-full h-auto rounded-3xl shadow-2xl"
+              />
+            </div>
           </div>
         </div>
 

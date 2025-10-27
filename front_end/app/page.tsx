@@ -13,7 +13,7 @@ import { DashboardPage } from "./components/DashboardPage";
 type Page = "home" | "login" | "register" | "dashboard";
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<Page>("dashboard");
+  const [currentPage, setCurrentPage] = useState<Page>("home");
 
   const handleLoginClick = () => {
     setCurrentPage("login");

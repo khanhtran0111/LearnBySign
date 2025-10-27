@@ -34,3 +34,14 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+/Note dependencies
+npm
+cd front_end
+npm install lucide-react
+npm install react-hook-form@7.55.0 @hookform/resolvers zod
+npm install @radix-ui/react-avatar @radix-ui/react-dropdown-menu @radix-ui/react-scroll-area
+npm install @radix-ui/react-select @radix-ui/react-progress @radix-ui/react-label
+npm install @radix-ui/react-slot
+npm install class-variance-authority clsx tailwind-merge
+npm install sonner@2.0.3
