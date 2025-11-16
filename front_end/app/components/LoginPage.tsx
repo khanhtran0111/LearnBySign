@@ -9,7 +9,9 @@ import { Card } from "./ui/card";
 import { Hand, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { ImageWithFallback } from "./fallback/ImageWithFallback";
+import axios from "axios";
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const loginSchema = z.object({
   email: z.string().email({ message: "Email không hợp lệ" }),
   password: z.string().min(6, { message: "Mật khẩu phải có ít nhất 6 ký tự" }),
@@ -25,6 +27,7 @@ interface LoginPageProps {
 
 export function LoginPage({ onBackToHome, onSwitchToRegister, onLoginSuccess }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   
   const {
     register,
@@ -34,11 +37,47 @@ export function LoginPage({ onBackToHome, onSwitchToRegister, onLoginSuccess }: 
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = async (data: LoginFormValues) => {
+  const onSubmit = async (formData: LoginFormValues) => {
     // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    console.log("Login data:", data);
-    onLoginSuccess();
+    setApiError(null);
+    try {
+      // Gọi API POST đến endpoint đăng nhập của Nest.js
+      const response = await axios.post(`${BACKEND_URL}/auth/login`, {
+        email: formData.email,
+        password: formData.password,
+      });
+
+      // Nest.js thường trả về JWT trong trường access_token hoặc token
+      const token = response.data?.access_token || response.data?.token;
+
+      if (token) {
+        // 3. Lưu Token vào localStorage hoặc Cookies
+        localStorage.setItem('accessToken', token); 
+        console.log("Đăng nhập thành công, Token đã lưu:", token);
+        onLoginSuccess(); // Chuyển hướng
+      } else {
+        // Xử lý nếu API thành công nhưng không trả về token (trường hợp hiếm)
+        setApiError("Đăng nhập thành công nhưng không nhận được token xác thực.");
+      }
+
+    } catch (error) {
+      // 4. Xử lý lỗi từ API
+      console.error("Lỗi đăng nhập:", error);
+
+      if (axios.isAxiosError(error) && error.response) {
+        // Lỗi 401 Unauthorized (sai email/mật khẩu)
+        const errorMessage = error.response.data?.message || "Email hoặc mật khẩu không đúng.";
+        
+        if (Array.isArray(errorMessage)) {
+           setApiError(errorMessage.join('; '));
+        } else {
+           setApiError(errorMessage);
+        }
+        
+      } else {
+        setApiError("Không thể kết nối đến máy chủ.");
+      }
+    }
   };
 
   return (

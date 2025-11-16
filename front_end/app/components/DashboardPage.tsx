@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardHeader } from "./DashboardHeader";
 import { DashboardSidebar, StudyLevel, LessonType } from "./DashboardSidebar";
 import { DashboardContent } from "./DashboardContent";
@@ -7,10 +7,36 @@ import { VideoPlayer } from "./VideoPlayer";
 import { PracticeMode } from "./PracticeMode";
 import { GameMode } from "./GameMode";
 import { Lesson } from "./LessonCard";
+import { useRouter } from 'next/navigation'; 
+import axios from 'axios';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+interface User {
+    fullName: string;
+    email: string;
+    birthDate: string;
+}
 
 interface DashboardPageProps {
   onSignOut: () => void;
 }
+
+const fetchUserProfile = async (token: string): Promise<User> => {
+    try {
+        const response = await axios.get(`${BACKEND_URL}/users/me`, {
+            headers: {
+                Authorization: `Bearer ${token}`, 
+            },
+        });
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+            localStorage.removeItem('accessToken'); // Xóa token hết hạn
+        }
+        throw error;
+    }
+};
 
 // Mock data for lessons
 const mockLessons = {
@@ -153,6 +179,9 @@ const mockLessons = {
 };
 
 export function DashboardPage({ onSignOut }: DashboardPageProps) {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true); // Thêm state cho dữ liệu người dùng và trạng thái tải
   const [activeTab, setActiveTab] = useState<LessonType>("study");
   const [activeLevel, setActiveLevel] = useState<StudyLevel>("newbie");
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
@@ -189,13 +218,41 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
 
   const handleCloseSidebar = () => {
     setIsSidebarOpen(false);
-  };
+  }  
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    const loadProfile = async () => {
+      try {
+        const profileData = await fetchUserProfile(token);
+        setUser(profileData);
+      } catch (err) {
+        router.push('/login'); 
+      } finally {
+        setIsLoading(false); // Luôn thoát khỏi trạng thái tải
+      }
+    };
+
+    loadProfile();
+  }, [router]);
+  
+  if (isLoading || !user) {
+    return (
+        <div className="min-h-screen flex items-center justify-center">
+            <p>Đang tải dữ liệu người dùng...</p> 
+        </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
       <DashboardHeader
-        userName="Nguyễn Văn A"
-        userEmail="student@learnbysign.vn"
+        userName={user.fullName}
+        userEmail={user.email}
         userAvatar="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHVkZW50JTIwYXZhdGFyJTIwcHJvZmlsZXxlbnwxfHx8fDE3NjAxMzM0MTd8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
         onViewProfile={handleViewProfile}
         onSettings={handleSettings}
