@@ -10,7 +10,6 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
-  await app.listen(process.env.PORT ?? 3001);
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   const config = new DocumentBuilder()
@@ -22,7 +21,6 @@ async function bootstrap() {
 
   const doc = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, doc, { swaggerOptions: { persistAuthorization: true } });
-
-  await app.listen(process.env.PORT || 3000);
+  await app.listen(process.env.PORT ?? 3001);
 }
 bootstrap();
