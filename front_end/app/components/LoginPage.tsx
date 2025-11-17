@@ -51,17 +51,17 @@ export function LoginPage({ onBackToHome, onSwitchToRegister, onLoginSuccess }: 
       const token = response.data?.access_token || response.data?.token;
 
       if (token) {
-        // 3. Lưu Token vào localStorage hoặc Cookies
+        // Lưu Token vào localStorage hoặc Cookies
         localStorage.setItem('accessToken', token); 
         console.log("Đăng nhập thành công, Token đã lưu:", token);
         onLoginSuccess(); // Chuyển hướng
       } else {
-        // Xử lý nếu API thành công nhưng không trả về token (trường hợp hiếm)
+        // Xử lý nếu API thành công nhưng không trả về token
         setApiError("Đăng nhập thành công nhưng không nhận được token xác thực.");
       }
 
     } catch (error) {
-      // 4. Xử lý lỗi từ API
+      // Xử lý lỗi từ API
       console.error("Lỗi đăng nhập:", error);
 
       if (axios.isAxiosError(error) && error.response) {
