@@ -10,6 +10,8 @@ import { Hand, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { ImageWithFallback } from "./fallback/ImageWithFallback";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import axios from "axios";
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 const registerSchema = z.object({
   fullName: z.string().min(2, { message: "Họ tên phải có ít nhất 2 ký tự" }),
@@ -19,8 +21,10 @@ const registerSchema = z.object({
     .regex(/[A-Z]/, { message: "Mật khẩu phải có ít nhất 1 chữ hoa" })
     .regex(/[0-9]/, { message: "Mật khẩu phải có ít nhất 1 chữ số" }),
   confirmPassword: z.string(),
-  role: z.enum(["parent", "teacher", "student"], {
-    required_error: "Vui lòng chọn vai trò",
+  birthDate: z.string().refine((date) => {
+    return date.length > 0 && !isNaN(new Date(date).getTime());
+    }, {
+    message: "Ngày sinh không hợp lệ",
   }),
   phone: z.string()
     .min(10, { message: "Số điện thoại phải có ít nhất 10 số" })
@@ -54,20 +58,65 @@ export function RegisterPage({ onBackToHome, onSwitchToLogin, onRegisterSuccess 
     resolver: zodResolver(registerSchema),
   });
 
-  const onSubmit = async (data: RegisterFormValues) => {
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const onSubmit = async (formData: RegisterFormValues) => {
     // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    console.log("Register data:", data);
-    onRegisterSuccess();
+    setApiError(null); // Reset lỗi trước khi gửi request
+
+  // Tạo payload chỉ chứa các trường Back-end cần
+  const payload = {
+    fullName: formData.fullName,
+    email: formData.email,
+    password: formData.password,
+    birthDate: formData.birthDate,
+    phone: formData.phone,
+  };
+
+  try {
+    // Thực hiện gọi API POST đến endpoint đăng ký của Nest.js
+    const response = await axios.post(`${BACKEND_URL}/auth/register`, payload);
+
+    //Xử lý thành công
+    console.log("Đăng ký thành công:", response.data);
+    onRegisterSuccess(); // Chuyển hướng hoặc hiển thị thông báo thành công
+
+  } catch (error) {
+    //Xử lý lỗi
+    console.error("Lỗi đăng ký:", error);
+
+    // Lấy thông báo lỗi từ response của Back-end
+    if (axios.isAxiosError(error) && error.response) {
+      // Ví dụ: Nest.js trả về 409 Conflict khi email đã tồn tại
+      const errorMessage = error.response.data?.message || "Đã xảy ra lỗi không xác định.";
+      
+      // Xử lý trường hợp đặc biệt, ví dụ: Nest.js trả về mảng thông báo lỗi
+      if (Array.isArray(errorMessage)) {
+         setApiError(errorMessage.join('; '));
+      } else {
+         setApiError(errorMessage);
+      }
+      
+    } else {
+      setApiError("Không thể kết nối đến máy chủ.");
+    }
+  }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 via-purple-50 to-pink-50 px-4 py-12">
       <div className="w-full max-w-5xl grid md:grid-cols-2 gap-8 items-center">
         {/* Left side - Illustration */}
         <div className="hidden md:block">
           <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-200 to-pink-200 rounded-3xl blur-3xl opacity-30"></div>
+            <div className="absolute inset-0 bg-linear-to-br from-blue-200 to-purple-200 rounded-3xl blur-3xl opacity-30"></div>
+            <div className="relative">
+              <ImageWithFallback
+                src="https://images.unsplash.com/photo-1546410531-bb4caa6b424d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaGlsZHJlbiUyMGxlYXJuaW5nJTIwc2lnbiUyMGxhbmd1YWdlfGVufDF8fHx8MTc2MDEzMjE0Nnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+                alt="Học tập"
+                className="w-full h-auto rounded-3xl shadow-2xl"
+              />
+            </div>
           </div>
         </div>
 
@@ -78,14 +127,20 @@ export function RegisterPage({ onBackToHome, onSwitchToLogin, onRegisterSuccess 
               onClick={onBackToHome}
               className="flex items-center gap-3 mb-4 hover:opacity-80 transition-opacity"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-linear-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
                 <Hand className="w-6 h-6 text-white" />
               </div>
-              <h2 className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h2 className="bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 LearnBySign
               </h2>
             </button>
             <h1 className="mb-2">Đăng ký tài khoản</h1>
+            {apiError && (
+    <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded mb-4">
+        <p className="font-medium">Lỗi đăng ký:</p>
+        <p className="text-sm">{apiError}</p>
+    </div>
+)}
             <p className="text-muted-foreground">
               Tạo tài khoản để bắt đầu hành trình học tập
             </p>
@@ -134,22 +189,18 @@ export function RegisterPage({ onBackToHome, onSwitchToLogin, onRegisterSuccess 
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="role">Vai trò</Label>
-              <Select onValueChange={(value) => setValue("role", value as any)}>
-                <SelectTrigger className={errors.role ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Chọn vai trò của bạn" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="student">Học sinh</SelectItem>
-                  <SelectItem value="parent">Phụ huynh</SelectItem>
-                  <SelectItem value="teacher">Giáo viên</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.role && (
-                <p className="text-sm text-red-500">{errors.role.message}</p>
-              )}
-            </div>
+            {<div className="space-y-2">
+              <Label htmlFor="birthDate">Ngày sinh</Label>
+              <Input
+                id="birthDate"
+                type="date"
+                {...register("birthDate")}
+                className={errors.birthDate ? "border-red-500" : ""}
+                />
+                {errors.birthDate && (
+                  <p className="text-sm text-red-500">{errors.birthDate.message}</p>
+                  )}
+            </div>}
 
             <div className="space-y-2">
               <Label htmlFor="password">Mật khẩu</Label>
@@ -230,7 +281,7 @@ export function RegisterPage({ onBackToHome, onSwitchToLogin, onRegisterSuccess 
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+              className="w-full bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Đang đăng ký..." : "Đăng ký"}
