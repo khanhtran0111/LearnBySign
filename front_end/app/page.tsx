@@ -44,7 +44,7 @@ export default function App() {
   };
 
   const handleRegisterSuccess = () => {
-    setCurrentPage("dashboard");
+           setCurrentPage("login");
   };
 
   const handleSignOut = () => {
