@@ -11,6 +11,8 @@
     "concurrently": "^8.2.2"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.84.0",
+    "@types/multer": "^2.0.0",
     "lucide-react": "^0.547.0"
   }
 }
