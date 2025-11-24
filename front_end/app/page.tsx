@@ -9,6 +9,7 @@ import { Footer } from "./components/Footer";
 import { LoginPage } from "./components/LoginPage";
 import { RegisterPage } from "./components/RegisterPage";
 import { DashboardPage } from "./components/DashboardPage";
+import { DashboardPageWithExercises } from "./components/DashboardPageWithExercises";
 
 type Page = "home" | "login" | "register" | "dashboard";
 
@@ -44,7 +45,7 @@ export default function App() {
   };
 
   const handleRegisterSuccess = () => {
-           setCurrentPage("login");
+    setCurrentPage("login");
   };
 
   const handleSignOut = () => {
@@ -52,7 +53,8 @@ export default function App() {
   };
 
   if (currentPage === "dashboard") {
-    return <DashboardPage onSignOut={handleSignOut} />;
+    // return <DashboardPage onSignOut={handleSignOut} />;
+    return <DashboardPageWithExercises onSignOut={handleSignOut} />;
   }
 
   if (currentPage === "login") {
