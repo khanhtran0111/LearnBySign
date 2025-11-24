@@ -96,7 +96,7 @@ const mockLessons = {
       title: "Bài 6: Số 0-5",
       description: "Học ký hiệu cho các số từ 0 đến 5",
       videoUrl: "https://example.com/video6",
-      thumbnailUrl: "https://images.unsplash.com/photo-1632571337945-d7a2f97f5e6b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxudW1iZXJzJTIwaGFuZCUyMGdlc3R1cmVzfGVufDF8fHx8MTc2MDEzMzQwNHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      thumbnailUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaWduJTIwbGFuZ3VhZ2UlMjBhbHBoYWJldHxlbnwxfHx8fDE3NjAxMzMzODV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
       duration: "4:30",
       isCompleted: false,
       isLocked: true,
