@@ -9,6 +9,7 @@ import { GameMode } from "./GameMode";
 import { Lesson } from "./LessonCard";
 import { useRouter } from 'next/navigation'; 
 import axios from 'axios';
+import { lessonsData } from '@/app/data/lessonsData';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -16,10 +17,11 @@ interface User {
     fullName: string;
     email: string;
     birthDate: string;
+    avatarUrl?: string;
 }
 
 interface DashboardPageProps {
-  onSignOut: () => void;
+  onSignOut?: () => void;
 }
 
 const fetchUserProfile = async (token: string): Promise<User> => {
@@ -41,63 +43,90 @@ const fetchUserProfile = async (token: string): Promise<User> => {
 // Mock data for lessons
 const mockLessons = {
   newbie: [
+    // Phần 1: Chữ cái A-H
     {
       id: "n1",
-      title: "Bài 1: Chữ cái A-E",
-      description: "Học ký hiệu của 5 chữ cái đầu tiên trong bảng chữ cái",
+      title: "Bài 1: Chữ cái A-H",
+      description: "Học ký hiệu của 8 chữ cái đầu tiên trong bảng chữ cái",
       videoUrl: "https://example.com/video1",
       thumbnailUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaWduJTIwbGFuZ3VhZ2UlMjBhbHBoYWJldHxlbnwxfHx8fDE3NjAxMzMzODV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      duration: "5:30",
+      duration: "8:00",
       isCompleted: true,
       isLocked: false,
     },
+    {
+      id: "p1",
+      title: "Ghép chữ cái A-H",
+      description: "Luyện tập ghép các chữ cái vừa học với ký hiệu",
+      videoUrl: "https://example.com/practice1",
+      thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      duration: "3 phút",
+      isCompleted: true,
+      isLocked: false,
+    },
+    
+    // Phần 2: Chữ cái I-P
     {
       id: "n2",
-      title: "Bài 2: Chữ cái F-J",
-      description: "Tiếp tục học ký hiệu 5 chữ cái tiếp theo",
+      title: "Bài 2: Chữ cái I-P",
+      description: "Tiếp tục học ký hiệu cho chữ cái I đến P",
       videoUrl: "https://example.com/video2",
       thumbnailUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaWduJTIwbGFuZ3VhZ2UlMjBhbHBoYWJldHxlbnwxfHx8fDE3NjAxMzMzODV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      duration: "6:00",
-      isCompleted: true,
+      duration: "8:00",
+      isCompleted: false,
       isLocked: false,
     },
+    {
+      id: "p2",
+      title: "Trắc nghiệm chữ cái I-P",
+      description: "Kiểm tra kiến thức về chữ cái I-P",
+      videoUrl: "https://example.com/practice2",
+      thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      duration: "3 phút",
+      isCompleted: false,
+      isLocked: false,
+    },
+    
+    // Phần 3: Chữ cái Q-Z
     {
       id: "n3",
-      title: "Bài 3: Chữ cái K-O",
-      description: "Học ký hiệu cho nhóm chữ cái K đến O",
+      title: "Bài 3: Chữ cái Q-Z",
+      description: "Hoàn thành bảng chữ cái với các ký hiệu cuối cùng",
       videoUrl: "https://example.com/video3",
       thumbnailUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaWduJTIwbGFuZ3VhZ2UlMjBhbHBoYWJldHxlbnwxfHx8fDE3NjAxMzMzODV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      duration: "5:45",
+      duration: "10:00",
       isCompleted: false,
-      isLocked: false,
+      isLocked: true,
     },
+    {
+      id: "p3",
+      title: "Điền chữ vào câu Q-Z",
+      description: "Hoàn thành câu với chữ cái phù hợp",
+      videoUrl: "https://example.com/practice3",
+      thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      duration: "3 phút",
+      isCompleted: false,
+      isLocked: true,
+    },
+    
+    // Phần 4: Số 0-9
     {
       id: "n4",
-      title: "Bài 4: Chữ cái P-T",
-      description: "Ký hiệu cho các chữ cái P, Q, R, S, T",
+      title: "Bài 4: Số 0-9",
+      description: "Học ký hiệu cho các số từ 0 đến 9",
       videoUrl: "https://example.com/video4",
       thumbnailUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaWduJTIwbGFuZ3VhZ2UlMjBhbHBoYWJldHxlbnwxfHx8fDE3NjAxMzMzODV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      duration: "6:15",
+      duration: "6:00",
       isCompleted: false,
       isLocked: true,
     },
     {
-      id: "n5",
-      title: "Bài 5: Chữ cái U-Z",
-      description: "Hoàn thành bảng chữ cái với các ký hiệu cuối cùng",
-      videoUrl: "https://example.com/video5",
-      thumbnailUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaWduJTIwbGFuZ3VhZ2UlMjBhbHBoYWJldHxlbnwxfHx8fDE3NjAxMzMzODV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      duration: "5:50",
-      isCompleted: false,
-      isLocked: true,
-    },
-    {
-      id: "n6",
-      title: "Bài 6: Số 0-5",
-      description: "Học ký hiệu cho các số từ 0 đến 5",
-      videoUrl: "https://example.com/video6",
-      thumbnailUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaWduJTIwbGFuZ3VhZ2UlMjBhbHBoYWJldHxlbnwxfHx8fDE3NjAxMzMzODV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      duration: "4:30",
+      id: "p4",
+      title: "Luyện tập số 0-9",
+      description: "Thực hành ký hiệu các con số",
+      videoUrl: "https://example.com/practice4",
+      thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      duration: "3 phút",
       isCompleted: false,
       isLocked: true,
     },
@@ -187,19 +216,57 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const currentLessons = mockLessons[activeLevel] || [];
+  const currentLessons = lessonsData[activeLevel] || [];
 
   const handleViewProfile = () => {
-    alert("Tính năng xem hồ sơ sẽ được phát triển");
+    router.push("/profile");
   };
 
   const handleSettings = () => {
-    alert("Tính năng cài đặt sẽ được phát triển");
+    router.push("/settings");
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem('accessToken');
+    if (onSignOut) {
+      onSignOut();
+    }
+    router.push('/');
+  };
+
+  // Mapping slug cố định cho lessons
+  const lessonSlugById: Record<string, string> = {
+    n1: 'n1-chu-cai-a-h',
+    n2: 'n2-chu-cai-i-p',
+    n3: 'n3-chu-cai-q-z',
+    n4: 'n4-so-0-9',
+    b1: 'b1-dong-vat-animals',
+    b2: 'b2-mau-sac-colors',
+    b3: 'b3-gia-dinh-family',
+    b4: 'b4-thuc-an-food',
+    a1: 'a1-chao-hoi-co-ban',
+    a2: 'a2-hoi-dap-thong-tin',
+    a3: 'a3-giao-tiep-hang-ngay',
+  };
+
+  // Mapping slug cố định cho practices
+  const practiceSlugById: Record<string, string> = {
+    p1: 'p1-ghep-chu-cai-a-h',
+    p2: 'p2-trac-nghiem-chu-cai-i-p',
+    p3: 'p3-dien-chu-vao-cau-q-z',
+    p4: 'p4-luyen-tap-so-0-9',
   };
 
   const handlePlayLesson = (lesson: Lesson) => {
-    if (!lesson.isLocked) {
-      setSelectedLesson(lesson);
+    if (lesson.isLocked) return;
+    
+    // Xác định slug dựa trên type
+    if (lesson.type === 'practice') {
+      const slug = practiceSlugById[lesson.id] ?? lesson.id;
+      router.push(`/dashboard/practice/${slug}`);
+    } else {
+      const slug = lessonSlugById[lesson.id] ?? lesson.id;
+      router.push(`/dashboard/lesson/${slug}`);
     }
   };
 
@@ -253,10 +320,10 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
       <DashboardHeader
         userName={user.fullName}
         userEmail={user.email}
-        userAvatar="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHVkZW50JTIwYXZhdGFyJTIwcHJvZmlsZXxlbnwxfHx8fDE3NjAxMzM0MTd8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+        userAvatar={user.avatarUrl}
         onViewProfile={handleViewProfile}
         onSettings={handleSettings}
-        onSignOut={onSignOut}
+        onSignOut={handleSignOut}
         onMenuClick={handleToggleSidebar}
       />
       <div className="flex flex-1 overflow-hidden">
@@ -271,7 +338,7 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
         {activeTab === "study" ? (
           <DashboardContent
             level={activeLevel}
-            lessons={currentLessons}
+            lessonGroups={currentLessons}
             onPlayLesson={handlePlayLesson}
           />
         ) : activeTab === "practice" ? (
@@ -281,7 +348,7 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
         )}
       </div>
 
-      {selectedLesson && (
+      {selectedLesson && selectedLesson.videoUrl && (
         <VideoPlayer
           videoUrl={selectedLesson.videoUrl}
           title={selectedLesson.title}
