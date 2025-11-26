@@ -18,44 +18,42 @@ interface User {
   fullName: string;
   email: string;
   avatarUrl?: string;
+  _id?: string;
+  id?: string;
 }
 
 const mockExercises: Record<string, any> = {
-  // Phần 1: A-H
   "p1-ghep-chu-cai-a-h": {
     id: "p1",
-    title: "Ghép chữ cái A-H",
-    description: "Luyện tập ghép các chữ cái A-H với ký hiệu",
+    title: "Luyện tập chữ cái A-H",
+    description: "Luyện tập thực hành ký hiệu các chữ cái A-H",
     exerciseType: "matching",
     difficulty: "easy",
     points: 50,
   },
   
-  // Phần 2: I-P
   "p2-trac-nghiem-chu-cai-i-p": {
     id: "p2",
-    title: "Trắc nghiệm chữ cái I-P",
-    description: "Kiểm tra kiến thức về chữ cái I-P",
-    exerciseType: "quiz",
+    title: "Luyện tập chữ cái I-P",
+    description: "Luyện tập thực hành ký hiệu các chữ cái I-P",
+    exerciseType: "matching",
     difficulty: "easy",
     points: 40,
   },
   
-  // Phần 3: Q-Z
   "p3-dien-chu-vao-cau-q-z": {
     id: "p3",
-    title: "Điền chữ vào câu Q-Z",
-    description: "Hoàn thành câu với chữ cái phù hợp",
-    exerciseType: "fill-blank",
+    title: "Luyện tập chữ cái Q-Z",
+    description: "Luyện tập thực hành ký hiệu các chữ cái Q-Z",
+    exerciseType: "matching",
     difficulty: "easy",
     points: 60,
   },
   
-  // Phần 4: Số 0-9
   "p4-luyen-tap-so-0-9": {
     id: "p4",
     title: "Luyện tập số 0-9",
-    description: "Thực hành ký hiệu các con số",
+    description: "Luyện tập thực hành ký hiệu các số 0-9",
     exerciseType: "matching",
     difficulty: "easy",
     points: 50,
@@ -132,7 +130,9 @@ export default function PracticePage() {
   const [correctAttempts, setCorrectAttempts] = useState(0);
   const [practiceCompleted, setPracticeCompleted] = useState(false);
   const [sessionId, setSessionId] = useState<string>(`practice_${Date.now()}`);
-  const processingRef = useRef(false); // Prevent duplicate calls
+  const processingRef = useRef(false);
+  const correctAttemptsRef = useRef(0);
+  const userRef = useRef<User | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -147,6 +147,7 @@ export default function PracticePage() {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(response.data);
+        userRef.current = response.data;
       } catch (error) {
         if (axios.isAxiosError(error) && error.response?.status === 401) {
           localStorage.removeItem('accessToken');
@@ -173,8 +174,31 @@ export default function PracticePage() {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
+          const finalAttempts = correctAttemptsRef.current;
+          const currentUser = userRef.current;
+          
           setPracticeCompleted(true);
           setIsDoingSignPractice(false);
+          
+          if (currentUser) {
+            const token = localStorage.getItem('accessToken');
+            if (token) {
+              axios.post(`${BACKEND_URL}/progress/mark`, {
+                idUser: currentUser._id || currentUser.id,
+                idLesson: exercise.id,
+                type: 'practice',
+                completed: true,
+                correctAnswers: finalAttempts,
+              }, {
+                headers: { Authorization: `Bearer ${token}` },
+              }).then(() => {
+                alert(`Hết giờ! Điểm: ${finalAttempts * 15}`);
+              }).catch(() => {
+                alert('Có lỗi khi lưu điểm!');
+              });
+            }
+          }
+          
           return 0;
         }
         return prev - 1;
@@ -185,7 +209,6 @@ export default function PracticePage() {
   }, [isDoingSignPractice, practiceCompleted]);
 
   const startSignPractice = () => {
-    // Xác định danh sách chữ cái dựa trên exercise
     let signs: string[] = [];
     if (exercise.id === 'p1') {
       signs = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -196,7 +219,7 @@ export default function PracticePage() {
     } else if (exercise.id === 'p4') {
       signs = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
     } else {
-      signs = ['A', 'B', 'C', 'D', 'E']; // fallback
+      signs = ['A', 'B', 'C', 'D', 'E'];
     }
     
     const randomIndex = Math.floor(Math.random() * signs.length);
@@ -204,25 +227,25 @@ export default function PracticePage() {
     setPracticeScore(0);
     setTimeRemaining(120);
     setCorrectAttempts(0);
+    correctAttemptsRef.current = 0;
     setPracticeCompleted(false);
     setSessionId(`practice_${Date.now()}_0`);
     setIsDoingSignPractice(true);
-    processingRef.current = false; // Reset processing flag
+    processingRef.current = false;
   };
 
   const handleCorrectSign = () => {
-    // Prevent duplicate calls
-    if (processingRef.current) {
-      console.log('⚠️ Already processing, ignoring duplicate call');
-      return;
-    }
+    if (processingRef.current) return;
     
     processingRef.current = true;
-    console.log('✅ Processing correct sign:', currentSign);
     
-    const pointsEarned = 10;
+    const pointsEarned = 15;
     setPracticeScore((prev) => prev + pointsEarned);
-    setCorrectAttempts((prev) => prev + 1);
+    setCorrectAttempts((prev) => {
+      const newValue = prev + 1;
+      correctAttemptsRef.current = newValue;
+      return newValue;
+    });
     
     // Xác định danh sách chữ cái dựa trên exercise
     let signs: string[] = [];
@@ -238,26 +261,19 @@ export default function PracticePage() {
       signs = ['A', 'B', 'C', 'D', 'E']; // fallback
     }
     
-    // Chuyển sang ký hiệu ngẫu nhiên tiếp theo (đảm bảo khác ký hiệu hiện tại)
     const availableSigns = signs.filter(sign => sign !== currentSign);
     const randomIndex = Math.floor(Math.random() * availableSigns.length);
     const newSign = availableSigns[randomIndex];
     
-    console.log(`🔄 Chuyển từ ${currentSign} sang ${newSign}`);
-    
-    // Update sign và sessionId NGAY LẬP TỨC để SignCamera reset
     setCurrentSign(newSign);
     setSessionId(`practice_${Date.now()}_${newSign}`);
     
-    // Giảm thời gian block xuống 1000ms (khớp với animation 1500ms trong SignCamera)
     setTimeout(() => {
       processingRef.current = false;
-      console.log('🔓 Ready for next sign');
     }, 1000);
   };
 
   const handleSkipSign = () => {
-    // Xác định danh sách chữ cái dựa trên exercise
     let signs: string[] = [];
     if (exercise.id === 'p1') {
       signs = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -268,20 +284,50 @@ export default function PracticePage() {
     } else if (exercise.id === 'p4') {
       signs = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
     } else {
-      signs = ['A', 'B', 'C', 'D', 'E']; // fallback
+      signs = ['A', 'B', 'C', 'D', 'E'];
     }
     
     const availableSigns = signs.filter(sign => sign !== currentSign);
     const randomIndex = Math.floor(Math.random() * availableSigns.length);
     const newSign = availableSigns[randomIndex];
-    console.log(`⏭️ Bỏ qua ${currentSign}, chuyển sang ${newSign}`);
     setCurrentSign(newSign);
     setSessionId(`practice_${Date.now()}_${randomIndex}`);
   };
 
-  const endPractice = () => {
+  const endPractice = async () => {
+    const finalCorrectAttempts = correctAttemptsRef.current;
+    
     setPracticeCompleted(true);
     setIsDoingSignPractice(false);
+    
+    await markPracticeProgress(finalCorrectAttempts);
+  };
+
+  const markPracticeProgress = async (finalCorrectAttempts: number) => {
+    const token = localStorage.getItem('accessToken');
+    if (!token || !user) return;
+
+    try {
+      const userResponse = await axios.get(`${BACKEND_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const userId = userResponse.data._id || userResponse.data.id;
+
+      await axios.post(`${BACKEND_URL}/progress/mark`, {
+        idUser: userId,
+        idLesson: exercise.id,
+        type: 'practice',
+        completed: true,
+        correctAnswers: finalCorrectAttempts,
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      alert(`Hoàn thành practice! Điểm: ${finalCorrectAttempts * 15}`);
+    } catch (error) {
+      alert('Có lỗi khi lưu điểm practice!');
+    }
   };
 
   const exitSignPractice = () => {
@@ -294,8 +340,34 @@ export default function PracticePage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleComplete = (score: number) => {
-    alert(`Hoàn thành bài tập! Điểm: ${score}`);
+  const handleComplete = async (score: number) => {
+    const token = localStorage.getItem('accessToken');
+    if (token && user) {
+      try {
+        const userResponse = await axios.get(`${BACKEND_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        const userId = userResponse.data._id || userResponse.data.id;
+        const correctAnswers = Math.floor(score / 15);
+
+        // Gọi API với customId trực tiếp
+        await axios.post(`${BACKEND_URL}/progress/mark`, {
+          idUser: userId,
+          idLesson: exercise.id,
+          type: 'practice',
+          completed: true,
+          correctAnswers: correctAnswers,
+        }, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        alert(`Hoàn thành bài tập! Điểm: ${score}`);
+      } catch (error) {
+        console.error('Error marking progress:', error);
+        alert(`Hoàn thành bài tập! Điểm: ${score}`);
+      }
+    }
     router.push('/dashboard');
   };
 
@@ -337,9 +409,14 @@ export default function PracticePage() {
           <div className="mb-3">
             <div className="flex items-center justify-between mb-2">
               <h1 className="text-xl font-bold">📚 {exercise.title}</h1>
-              <Button onClick={exitSignPractice} variant="outline" size="sm">
-                Thoát
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={endPractice} variant="default" size="sm">
+                  Hoàn thành
+                </Button>
+                <Button onClick={exitSignPractice} variant="outline" size="sm">
+                  Thoát
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-2 mb-3">

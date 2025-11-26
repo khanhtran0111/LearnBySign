@@ -30,6 +30,14 @@ export class LessonsService {
         return lesson;
     }
 
+    async findByCustomId(customId: string): Promise<Lesson> {
+        const lesson = await this.lessonModel.findOne({ customId }).exec();
+        if (!lesson) {
+            throw new NotFoundException(`Lesson with customId ${customId} not found`);
+        }
+        return lesson;
+    }
+
     async update(id: string, updateLessonDto: any): Promise<Lesson> {
         const updatedLesson = await this.lessonModel
             .findByIdAndUpdate(id, updateLessonDto, { new: true })

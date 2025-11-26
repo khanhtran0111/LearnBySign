@@ -16,6 +16,11 @@ export class UsersController {
     return this.svc.findById(req.user.sub);
   }
 
+  @Get('me/stats')
+  getMyStats(@Req() req: any) {
+    return this.svc.getUserStats(req.user.sub);
+  }
+
   @Patch('me')
   updateMe(@Req() req: any, @Body() body: UpdateUserDto) {
     return this.svc.update(req.user.sub, body);

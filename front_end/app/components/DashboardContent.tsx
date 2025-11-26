@@ -5,13 +5,20 @@ import { Card } from "./ui/card";
 import { StudyLevel } from "./DashboardSidebar";
 import { LessonGroup } from "@/app/data/lessonsData";
 
+interface UserStats {
+  currentStreak?: number;
+  lessonPoints?: number;
+  practicePoints?: number;
+}
+
 interface DashboardContentProps {
   level: StudyLevel;
   lessonGroups: LessonGroup[];
   onPlayLesson: (lesson: Lesson) => void;
+  userStats?: UserStats;
 }
 
-export function DashboardContent({ level, lessonGroups, onPlayLesson }: DashboardContentProps) {
+export function DashboardContent({ level, lessonGroups, onPlayLesson, userStats }: DashboardContentProps) {
   const levelInfo = {
     newbie: {
       title: "Cấp độ Newbie",
@@ -86,7 +93,7 @@ export function DashboardContent({ level, lessonGroups, onPlayLesson }: Dashboar
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Chuỗi ngày học</p>
-                <p className="text-2xl">7 ngày</p>
+                <p className="text-2xl">{userStats?.currentStreak || 0} ngày</p>
               </div>
             </div>
           </Card>

@@ -20,6 +20,13 @@ interface User {
     avatarUrl?: string;
 }
 
+interface UserStats {
+  currentStreak: number;
+  lessonPoints: number;
+  practicePoints: number;
+  totalPoints: number;
+}
+
 interface DashboardPageProps {
   onSignOut?: () => void;
 }
@@ -43,7 +50,6 @@ const fetchUserProfile = async (token: string): Promise<User> => {
 // Mock data for lessons
 const mockLessons = {
   newbie: [
-    // Phần 1: Chữ cái A-H
     {
       id: "n1",
       title: "Bài 1: Chữ cái A-H",
@@ -56,16 +62,15 @@ const mockLessons = {
     },
     {
       id: "p1",
-      title: "Ghép chữ cái A-H",
-      description: "Luyện tập ghép các chữ cái vừa học với ký hiệu",
+      title: "Luyện tập chữ cái A-H",
+      description: "Luyện tập thực hành ký hiệu các chữ cái A-H",
       videoUrl: "https://example.com/practice1",
       thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      duration: "3 phút",
+      duration: "2 phút",
       isCompleted: true,
       isLocked: false,
     },
     
-    // Phần 2: Chữ cái I-P
     {
       id: "n2",
       title: "Bài 2: Chữ cái I-P",
@@ -78,16 +83,15 @@ const mockLessons = {
     },
     {
       id: "p2",
-      title: "Trắc nghiệm chữ cái I-P",
-      description: "Kiểm tra kiến thức về chữ cái I-P",
+      title: "Luyện tập chữ cái I-P",
+      description: "Luyện tập thực hành ký hiệu các chữ cái I-P",
       videoUrl: "https://example.com/practice2",
       thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      duration: "3 phút",
+      duration: "2 phút",
       isCompleted: false,
       isLocked: false,
     },
     
-    // Phần 3: Chữ cái Q-Z
     {
       id: "n3",
       title: "Bài 3: Chữ cái Q-Z",
@@ -100,16 +104,15 @@ const mockLessons = {
     },
     {
       id: "p3",
-      title: "Điền chữ vào câu Q-Z",
-      description: "Hoàn thành câu với chữ cái phù hợp",
+      title: "Luyện tập chữ cái Q-Z",
+      description: "Luyện tập thực hành ký hiệu các chữ cái Q-Z",
       videoUrl: "https://example.com/practice3",
       thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      duration: "3 phút",
+      duration: "2 phút",
       isCompleted: false,
       isLocked: true,
     },
     
-    // Phần 4: Số 0-9
     {
       id: "n4",
       title: "Bài 4: Số 0-9",
@@ -123,10 +126,10 @@ const mockLessons = {
     {
       id: "p4",
       title: "Luyện tập số 0-9",
-      description: "Thực hành ký hiệu các con số",
+      description: "Luyện tập thực hành ký hiệu các số 0-9",
       videoUrl: "https://example.com/practice4",
       thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-      duration: "3 phút",
+      duration: "2 phút",
       isCompleted: false,
       isLocked: true,
     },
@@ -210,11 +213,13 @@ const mockLessons = {
 export function DashboardPage({ onSignOut }: DashboardPageProps) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Thêm state cho dữ liệu người dùng và trạng thái tải
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<LessonType>("study");
   const [activeLevel, setActiveLevel] = useState<StudyLevel>("newbie");
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
 
   const currentLessons = lessonsData[activeLevel] || [];
 
@@ -297,10 +302,33 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
       try {
         const profileData = await fetchUserProfile(token);
         setUser(profileData);
+
+        const statsResponse = await axios.get(`${BACKEND_URL}/users/me/stats`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (statsResponse.data) {
+          setUserStats(statsResponse.data);
+        }
+
+        const progressResponse = await axios.get(`${BACKEND_URL}/progress`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (progressResponse.data) {
+          const completed = new Set<string>(
+            progressResponse.data
+              .filter((p: any) => p.completed)
+              .map((p: any) => String(p.idLesson?.customId || p.idLesson?._id || p.idLesson))
+          );
+          setCompletedLessons(completed);
+        }
       } catch (err) {
         router.push('/login'); 
       } finally {
-        setIsLoading(false); // Luôn thoát khỏi trạng thái tải
+        setIsLoading(false);
       }
     };
 
@@ -314,6 +342,14 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
         </div>
     );
   }
+
+  const updatedLessons = currentLessons.map(group => ({
+    ...group,
+    lessons: group.lessons.map(lesson => ({
+      ...lesson,
+      isCompleted: completedLessons.has(lesson.id)
+    }))
+  }));
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -338,8 +374,9 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
         {activeTab === "study" ? (
           <DashboardContent
             level={activeLevel}
-            lessonGroups={currentLessons}
+            lessonGroups={updatedLessons}
             onPlayLesson={handlePlayLesson}
+            userStats={userStats || undefined}
           />
         ) : activeTab === "practice" ? (
           <PracticeMode />

@@ -1,11 +1,14 @@
-import { IsBoolean, IsMongoId, IsNumber, IsOptional } from 'class-validator';
+import { IsBoolean, IsMongoId, IsNumber, IsOptional, IsEnum, IsString } from 'class-validator';
 
 export class MarkProgressDto {
-    @IsMongoId()
+    @IsString()
     idUser: string;
 
-    @IsMongoId()
+    @IsString()
     idLesson: string;
+
+    @IsEnum(['lesson', 'practice'])
+    type: 'lesson' | 'practice';
 
     @IsOptional()
     @IsBoolean()
@@ -14,4 +17,12 @@ export class MarkProgressDto {
     @IsOptional()
     @IsNumber()
     score?: number;
+
+    @IsOptional()
+    @IsNumber()
+    questionCount?: number;
+
+    @IsOptional()
+    @IsNumber()
+    correctAnswers?: number;
 }

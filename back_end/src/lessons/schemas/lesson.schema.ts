@@ -14,14 +14,24 @@ export class Lesson {
     @Prop({ required: true, enum: ['newbie', 'basic', 'advanced'], default: 'newbie' })
     difficulty: 'newbie' | 'basic' | 'advanced';
 
+    @Prop({ required: true, enum: ['lesson', 'practice'], default: 'lesson' })
+    type: 'lesson' | 'practice';
+
+    @Prop({ default: 1 })
+    questionCount: number;
+
     @Prop({ required: true })
     mediaUrl: string;
 
     @Prop({ required: true })
     folder: string;
+
+    @Prop({ unique: true, sparse: true })
+    customId?: string;
 }
 
 export const LessonSchema = SchemaFactory.createForClass(Lesson);
 
 // Indexes
 LessonSchema.index({ difficulty: 1 });
+LessonSchema.index({ customId: 1 });

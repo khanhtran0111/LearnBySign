@@ -29,6 +29,16 @@ interface User {
   level: string;
 }
 
+interface UserStats {
+  level: string;
+  lessonPoints: number;
+  practicePoints: number;
+  totalPoints: number;
+  currentStreak: number;
+  lastStudyDate?: string;
+  lessonsCompleted: number;
+}
+
 interface UserProgress {
   totalLessonsCompleted: number;
   totalLessons: number;
@@ -39,6 +49,7 @@ interface UserProgress {
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [stats, setStats] = useState<UserStats | null>(null);
   const [progress, setProgress] = useState<UserProgress | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -61,6 +72,19 @@ export default function ProfilePage() {
         const userData = await userResponse.json();
         setUser(userData);
 
+        // Fetch user stats
+        const statsResponse = await fetch("http://localhost:3001/users/me/stats", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        let statsData = null;
+        if (statsResponse.ok) {
+          statsData = await statsResponse.json();
+          setStats(statsData);
+        }
+
         const progressResponse = await fetch("http://localhost:3001/progress", {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -75,7 +99,7 @@ export default function ProfilePage() {
             totalLessonsCompleted: completedLessons,
             totalLessons,
             completionRate: (completedLessons / totalLessons) * 100,
-            streak: 5,
+            streak: statsData?.currentStreak || 0,
           });
         }
       } catch (error) {
@@ -210,15 +234,18 @@ export default function ProfilePage() {
                 <CardTitle>Thống kê học tập</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 text-white">
                     <div className="flex items-center justify-between mb-2">
                       <BookOpen className="w-8 h-8 opacity-80" />
                     </div>
                     <p className="text-3xl font-bold">
-                      {progress?.totalLessonsCompleted || 0}
+                      {stats?.lessonPoints || 0}
                     </p>
-                    <p className="text-sm opacity-90">Bài học hoàn thành</p>
+                    <p className="text-sm opacity-90">Điểm Lesson</p>
+                    <p className="text-xs opacity-70 mt-1">
+                      {stats?.lessonsCompleted || 0} bài hoàn thành
+                    </p>
                   </div>
 
                   <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-4 text-white">
@@ -226,27 +253,62 @@ export default function ProfilePage() {
                       <TrendingUp className="w-8 h-8 opacity-80" />
                     </div>
                     <p className="text-3xl font-bold">
-                      {progress?.completionRate.toFixed(0) || 0}%
+                      {stats?.practicePoints || 0}
                     </p>
-                    <p className="text-sm opacity-90">Tỷ lệ hoàn thành</p>
+                    <p className="text-sm opacity-90">Điểm Practice</p>
+                    <p className="text-xs opacity-70 mt-1">Từ bài luyện tập</p>
                   </div>
 
                   <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg p-4 text-white">
                     <div className="flex items-center justify-between mb-2">
                       <Award className="w-8 h-8 opacity-80" />
                     </div>
-                    <p className="text-3xl font-bold">{progress?.streak || 0}</p>
+                    <p className="text-3xl font-bold">{stats?.currentStreak || 0}</p>
                     <p className="text-sm opacity-90">Streak (ngày)</p>
+                    <p className="text-xs opacity-70 mt-1">
+                      {stats?.lastStudyDate 
+                        ? `Học gần nhất: ${new Date(stats.lastStudyDate).toLocaleDateString('vi-VN')}`
+                        : 'Chưa có hoạt động'}
+                    </p>
                   </div>
 
                   <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-4 text-white">
                     <div className="flex items-center justify-between mb-2">
+                      <Award className="w-8 h-8 opacity-80" />
+                    </div>
+                    <p className="text-3xl font-bold">
+                      {stats?.totalPoints || 0}
+                    </p>
+                    <p className="text-sm opacity-90">Tổng điểm</p>
+                    <p className="text-xs opacity-70 mt-1">
+                      Lesson + Practice
+                    </p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 text-white">
+                    <div className="flex items-center justify-between mb-2">
                       <BookOpen className="w-8 h-8 opacity-80" />
                     </div>
                     <p className="text-3xl font-bold">
-                      {progress?.totalLessons || 0}
+                      {progress?.totalLessonsCompleted || 0}
                     </p>
-                    <p className="text-sm opacity-90">Tổng bài học</p>
+                    <p className="text-sm opacity-90">Bài học hoàn thành</p>
+                    <p className="text-xs opacity-70 mt-1">
+                      {progress?.completionRate.toFixed(0) || 0}% hoàn thành
+                    </p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg p-4 text-white">
+                    <div className="flex items-center justify-between mb-2">
+                      <TrendingUp className="w-8 h-8 opacity-80" />
+                    </div>
+                    <p className="text-3xl font-bold">
+                      {levelMap[stats?.level || 'newbie'] || 'Người mới'}
+                    </p>
+                    <p className="text-sm opacity-90">Cấp độ hiện tại</p>
+                    <p className="text-xs opacity-70 mt-1">
+                      Đang học tập
+                    </p>
                   </div>
                 </div>
               </CardContent>

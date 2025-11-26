@@ -144,6 +144,43 @@ export default function LessonPage() {
     router.push('/dashboard');
   };
 
+  const handleCompleteLesson = async () => {
+    const token = localStorage.getItem('accessToken');
+    if (!token || !user) return;
+
+    try {
+      // Lấy userId
+      const userResponse = await axios.get(`${BACKEND_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const userId = userResponse.data._id || userResponse.data.id;
+      const questionCount = lesson.letters?.length || 1;
+
+      // Gọi API mark progress với customId trực tiếp
+      // Backend sẽ tự động xử lý việc tìm hoặc tạo lesson
+      await axios.post(`${BACKEND_URL}/progress/mark`, {
+        idUser: userId,
+        idLesson: lesson.id, // Dùng customId (n1, n2, etc.)
+        type: 'lesson',
+        completed: true,
+        questionCount: questionCount,
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      alert(`Chúc mừng! Bạn đã hoàn thành bài học và nhận được ${questionCount * 10} điểm!`);
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Error marking progress:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Response:', error.response?.data);
+        console.error('Status:', error.response?.status);
+      }
+      alert('Có lỗi xảy ra khi lưu tiến độ. Vui lòng kiểm tra console log và đảm bảo backend đang chạy.');
+    }
+  };
+
   const handleViewProfile = () => router.push("/profile");
   const handleSettings = () => router.push("/settings");
   const handleSignOut = () => {
@@ -252,7 +289,7 @@ export default function LessonPage() {
                 </div>
                 <Button
                   size="lg"
-                  onClick={handleClose}
+                  onClick={handleCompleteLesson}
                   className="bg-green-600 hover:bg-green-700"
                 >
                   <CheckCircle className="w-5 h-5 mr-2" />

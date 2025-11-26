@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Headers } from '@nestjs/common';
 import { ProgressService } from './progress.service';
 import { MarkProgressDto } from './dto/mark-progress.dto';
 
@@ -9,6 +9,14 @@ export class ProgressController {
     @Post('mark')
     markProgress(@Body() markProgressDto: MarkProgressDto) {
         return this.progressService.markProgress(markProgressDto);
+    }
+
+    @Get()
+    async getAllProgress(@Query('userId') userId?: string) {
+        if (userId) {
+            return this.progressService.findByUser(userId);
+        }
+        return this.progressService.findAll();
     }
 
     @Get(':idUser')
