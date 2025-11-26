@@ -286,11 +286,11 @@ export function DashboardPageWithExercises({ onSignOut }: DashboardPageWithExerc
   const currentMixedContent = mockMixedContent[activeLevel] || [];
 
   const handleViewProfile = () => {
-    alert("Tính năng xem hồ sơ sẽ được phát triển");
+    router.push("/profile");
   };
 
   const handleSettings = () => {
-    alert("Tính năng cài đặt sẽ được phát triển");
+    router.push("/settings");
   };
 
   const handlePlayLesson = (lesson: Lesson) => {

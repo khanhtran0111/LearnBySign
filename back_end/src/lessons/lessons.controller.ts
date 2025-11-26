@@ -30,6 +30,11 @@ export class LessonsController {
         return this.lessonsService.findAll(difficulty);
     }
 
+    @Get('by-custom-id/:customId')
+    findByCustomId(@Param('customId') customId: string) {
+        return this.lessonsService.findByCustomId(customId);
+    }
+
     @Get(':id')
     findOne(@Param('id') id: string) {
         return this.lessonsService.findOne(id);

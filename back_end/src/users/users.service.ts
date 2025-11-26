@@ -88,4 +88,19 @@ export class UsersService {
 
     return { ok: true };
   }
+
+  async getUserStats(id: string) {
+    const user = await this.userModel.findById(id).select('-passwordHash').lean();
+    if (!user) throw new NotFoundException();
+
+    return {
+      level: user.level,
+      lessonPoints: user.lessonPoints || 0,
+      practicePoints: user.practicePoints || 0,
+      totalPoints: (user.lessonPoints || 0) + (user.practicePoints || 0),
+      currentStreak: user.currentStreak || 0,
+      lastStudyDate: user.lastStudyDate,
+      lessonsCompleted: user.progress?.lessonsCompleted || 0,
+    };
+  }
 }

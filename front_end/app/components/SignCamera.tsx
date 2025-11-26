@@ -188,12 +188,16 @@ export function SignCamera({
           }
         }
 
-        // Send to API for prediction (throttled)
-        const now = Date.now();
-        if (now - lastPredictionTime.current > PREDICTION_INTERVAL) {
-          lastPredictionTime.current = now;
-          console.log(`⏱️ Gửi request dự đoán (${new Date().toLocaleTimeString()})...`);
-          await predictSign(results.multiHandLandmarks[0], results.multiHandedness[0]);
+        // Send to API for prediction (throttled) - SKIP if processing correct answer
+        if (!isProcessingCorrect.current) {
+          const now = Date.now();
+          if (now - lastPredictionTime.current > PREDICTION_INTERVAL) {
+            lastPredictionTime.current = now;
+            console.log(`⏱️ Gửi request dự đoán (${new Date().toLocaleTimeString()})...`);
+            await predictSign(results.multiHandLandmarks[0], results.multiHandedness[0]);
+          }
+        } else {
+          console.log(`🚫 Đang xử lý câu trả lời đúng, bỏ qua prediction...`);
         }
       } else {
         if (handDetected) {
@@ -269,33 +273,30 @@ export function SignCamera({
         if (useLabel === currentTarget) {
           console.log(`🎊 CHÍNH XÁC! (${(result.confidence * 100).toFixed(0)}%) - Tự động chuyển sang cử chỉ tiếp theo...`);
           
-          // Prevent multiple triggers
+          // Prevent multiple triggers - block immediately
           isProcessingCorrect.current = true;
+          console.log(`🔒 LOCKED - Không nhận predictions mới cho đến khi target thay đổi`);
           
           // Show success animation
           if (showSuccessAnimation) {
             setShowSuccess(true);
             // Reset prediction state to avoid stale data
             setCurrentPrediction(null);
+            // Giảm thời gian animation xuống 1s
             setTimeout(() => {
               setShowSuccess(false);
               if (autoAdvance) {
+                console.log(`🚀 Gọi onCorrectSign() - chuyển sang câu mới...`);
                 onCorrectSign();
               }
-              // Reset flag after advancing
-              setTimeout(() => {
-                isProcessingCorrect.current = false;
-              }, 500);
-            }, 1500); // Show for 1.5 seconds then advance
+              // Note: isProcessingCorrect will be reset when target changes
+            }, 1000); // Giảm từ 1.5s xuống 1s
           } else {
             setCurrentPrediction(null);
             if (autoAdvance) {
               onCorrectSign();
             }
-            // Reset flag after advancing
-            setTimeout(() => {
-              isProcessingCorrect.current = false;
-            }, 500);
+            // Note: isProcessingCorrect will be reset when target changes
           }
         }
         // Bỏ đếm câu sai - không gọi onIncorrectSign nữa

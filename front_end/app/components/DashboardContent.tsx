@@ -3,14 +3,22 @@ import { Badge } from "./ui/badge";
 import { Trophy, Target, Flame } from "lucide-react";
 import { Card } from "./ui/card";
 import { StudyLevel } from "./DashboardSidebar";
+import { LessonGroup } from "@/app/data/lessonsData";
+
+interface UserStats {
+  currentStreak?: number;
+  lessonPoints?: number;
+  practicePoints?: number;
+}
 
 interface DashboardContentProps {
   level: StudyLevel;
-  lessons: Lesson[];
+  lessonGroups: LessonGroup[];
   onPlayLesson: (lesson: Lesson) => void;
+  userStats?: UserStats;
 }
 
-export function DashboardContent({ level, lessons, onPlayLesson }: DashboardContentProps) {
+export function DashboardContent({ level, lessonGroups, onPlayLesson, userStats }: DashboardContentProps) {
   const levelInfo = {
     newbie: {
       title: "Cấp độ Newbie",
@@ -30,9 +38,12 @@ export function DashboardContent({ level, lessons, onPlayLesson }: DashboardCont
   };
 
   const info = levelInfo[level];
-  const completedLessons = lessons.filter((l) => l.isCompleted).length;
-  const totalLessons = lessons.length;
-  const progress = Math.round((completedLessons / totalLessons) * 100);
+  
+  // Tính tổng số bài học từ tất cả các groups
+  const allLessons = lessonGroups.flatMap(group => group.lessons);
+  const completedLessons = allLessons.filter((l) => l.isCompleted).length;
+  const totalLessons = allLessons.length;
+  const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
   return (
     <div className="flex-1 overflow-y-auto bg-gradient-to-b from-white to-blue-50/30">
@@ -82,7 +93,7 @@ export function DashboardContent({ level, lessons, onPlayLesson }: DashboardCont
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Chuỗi ngày học</p>
-                <p className="text-2xl">7 ngày</p>
+                <p className="text-2xl">{userStats?.currentStreak || 0} ngày</p>
               </div>
             </div>
           </Card>
@@ -90,15 +101,32 @@ export function DashboardContent({ level, lessons, onPlayLesson }: DashboardCont
 
         {/* Lessons Grid */}
         <div className="mb-4">
-          <h2 className="mb-4">Danh sách bài học</h2>
+          <h2 className="mb-4">Lộ trình học tập</h2>
+          <p className="text-sm text-muted-foreground mb-6">
+            Bài học và bài luyện tập được xếp theo từng phần để dễ dàng theo dõi
+          </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {lessons.map((lesson) => (
-            <LessonCard
-              key={lesson.id}
-              lesson={lesson}
-              onPlay={onPlayLesson}
-            />
+
+        {/* Lesson Groups */}
+        <div className="space-y-8">
+          {lessonGroups.map((group, groupIndex) => (
+            <div key={groupIndex}>
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">
+                  {groupIndex + 1}
+                </span>
+                {group.groupTitle}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {group.lessons.map((lesson) => (
+                  <LessonCard
+                    key={lesson.id}
+                    lesson={lesson}
+                    onPlay={onPlayLesson}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>

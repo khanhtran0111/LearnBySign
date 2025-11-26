@@ -13,11 +13,20 @@ export class Progress {
     @Prop({ type: Types.ObjectId, ref: 'Lesson', required: true })
     idLesson: Types.ObjectId;
 
+    @Prop({ required: true, enum: ['lesson', 'practice'], default: 'lesson' })
+    type: 'lesson' | 'practice';
+
     @Prop({ default: false })
     completed: boolean;
 
     @Prop({ default: 0 })
     score: number;
+
+    @Prop({ default: 0 })
+    questionCount: number;
+
+    @Prop({ default: 0 })
+    correctAnswers: number;
 
     @Prop({ default: Date.now })
     lastViewedAt: Date;

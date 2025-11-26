@@ -16,6 +16,18 @@ export class User {
   @Prop({ enum: ['newbie', 'basic', 'advanced'], default: 'newbie' })
   level: 'newbie'|'basic'|'advanced';
 
+  @Prop({ default: 0 })
+  lessonPoints: number;
+
+  @Prop({ default: 0 })
+  practicePoints: number;
+
+  @Prop({ default: 0 })
+  currentStreak: number;
+
+  @Prop({ default: null })
+  lastStudyDate?: Date;
+
   @Prop({ type: {
     lessonsCompleted: { type: Number, default: 0 },
     currentUnitId: { type: String, default: null },

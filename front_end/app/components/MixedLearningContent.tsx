@@ -22,6 +22,7 @@ interface MixedLearningContentProps {
   level: StudyLevel;
   items: LearningItem[];
   onPlayLesson: (lesson: Lesson) => void;
+  onStartExercise?: (exercise: PracticeExercise) => void;
 }
 
 // Mock data for exercises
@@ -95,7 +96,7 @@ const fillBlankData = [
   },
 ];
 
-export function MixedLearningContent({ level, items, onPlayLesson }: MixedLearningContentProps) {
+export function MixedLearningContent({ level, items, onPlayLesson, onStartExercise }: MixedLearningContentProps) {
   const [currentExercise, setCurrentExercise] = useState<PracticeExercise | null>(null);
   const [learningItems, setLearningItems] = useState(items);
   const [isDoingSignPractice, setIsDoingSignPractice] = useState(false);
@@ -238,10 +239,14 @@ export function MixedLearningContent({ level, items, onPlayLesson }: MixedLearni
 
   const handleStartExercise = (exercise: PracticeExercise) => {
     if (!exercise.isLocked) {
-      if (exercise.exerciseType === "matching") {
-        startSignPractice();
+      if (onStartExercise) {
+        onStartExercise(exercise);
       } else {
-        setCurrentExercise(exercise);
+        if (exercise.exerciseType === "matching") {
+          startSignPractice();
+        } else {
+          setCurrentExercise(exercise);
+        }
       }
     }
   };
