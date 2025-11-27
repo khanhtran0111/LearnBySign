@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { Lesson, LessonDocument } from './schemas/lesson.schema';
 
 import { MediaService } from '../media/media.service';
@@ -22,10 +22,22 @@ export class LessonsService {
         return this.lessonModel.find(filter).exec();
     }
 
+    /**
+     * Lấy chi tiết một bài học theo ID
+     * @param id - MongoDB ObjectId của bài học
+     * @returns Lesson object chứa mediaUrl để Frontend render video
+     * @throws BadRequestException nếu ID không đúng định dạng ObjectId
+     * @throws NotFoundException nếu không tìm thấy bài học
+     */
     async findOne(id: string): Promise<Lesson> {
+        // Validate ObjectId format
+        if (!mongoose.isValidObjectId(id)) {
+            throw new BadRequestException(`ID "${id}" không đúng định dạng MongoDB ObjectId`);
+        }
+
         const lesson = await this.lessonModel.findById(id).exec();
         if (!lesson) {
-            throw new NotFoundException(`Lesson with ID ${id} not found`);
+            throw new NotFoundException(`Không tìm thấy bài học với ID: ${id}`);
         }
         return lesson;
     }
