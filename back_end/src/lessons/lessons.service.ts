@@ -2,7 +2,6 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
 import { Lesson, LessonDocument } from './schemas/lesson.schema';
-
 import { MediaService } from '../media/media.service';
 
 @Injectable()
@@ -19,22 +18,14 @@ export class LessonsService {
 
     async findAll(difficulty?: string): Promise<Lesson[]> {
         const filter = difficulty ? { difficulty } : {};
-        return this.lessonModel.find(filter).exec();
+        // Có thể sort theo customId để bài học hiển thị đúng thứ tự n1, n2...
+        return this.lessonModel.find(filter).sort({ customId: 1 }).exec();
     }
 
-    /**
-     * Lấy chi tiết một bài học theo ID
-     * @param id - MongoDB ObjectId của bài học
-     * @returns Lesson object chứa mediaUrl để Frontend render video
-     * @throws BadRequestException nếu ID không đúng định dạng ObjectId
-     * @throws NotFoundException nếu không tìm thấy bài học
-     */
     async findOne(id: string): Promise<Lesson> {
-        // Validate ObjectId format
         if (!mongoose.isValidObjectId(id)) {
             throw new BadRequestException(`ID "${id}" không đúng định dạng MongoDB ObjectId`);
         }
-
         const lesson = await this.lessonModel.findById(id).exec();
         if (!lesson) {
             throw new NotFoundException(`Không tìm thấy bài học với ID: ${id}`);
@@ -68,61 +59,125 @@ export class LessonsService {
         return deletedLesson;
     }
 
-    async syncLessonsFromSupabase(): Promise<any> {
+    // --- ĐÃ XÓA HÀM syncLessonsFromSupabase CŨ TẠI ĐÂY ---
+
+    /**
+     * LOGIC MỚI: Sync contents cho các bài học đã có trong DB
+     */
+    async syncLessonContents(): Promise<any> {
+        const results: any[] = [];
+
+        // Mapping customId -> file range trong folder
+        const lessonFolderMapping: Record<string, { folder: string; fileFilter?: (name: string) => boolean }> = {
+            // Bài 1: Chữ A-H (Lấy các file a.gif -> h.gif)
+            n1: {
+                folder: '01_Alphabet_Numbers/gifs',
+                fileFilter: (name) => /^[a-h][\._]/i.test(name) || /^[a-h]$/i.test(name.replace(/\.[^/.]+$/, '')),
+            },
+            // Bài 2: Chữ I-P
+            n2: {
+                folder: '01_Alphabet_Numbers/gifs',
+                fileFilter: (name) => /^[i-p][\._]/i.test(name) || /^[i-p]$/i.test(name.replace(/\.[^/.]+$/, '')),
+            },
+            // Bài 3: Chữ Q-Z
+            n3: {
+                folder: '01_Alphabet_Numbers/gifs',
+                fileFilter: (name) => /^[q-z][\._]/i.test(name) || /^[q-z]$/i.test(name.replace(/\.[^/.]+$/, '')),
+            },
+            // Bài 4: Số 0-9
+            n4: {
+                folder: '01_Alphabet_Numbers/gifs',
+                fileFilter: (name) => /^\d[\._]/.test(name) || /^\d$/.test(name.replace(/\.[^/.]+$/, '')),
+            },
+        };
+
         try {
-            const folders = [
-                { path: '01_Alphabet_Numbers/gifs', difficulty: 'newbie', category: 'Chữ cái & Số' },
-                { path: '02_Simple_Words/gifs', difficulty: 'basic', category: 'Từ vựng cơ bản' },
-                { path: '03_Complex_Words/gifs', difficulty: 'advanced', category: 'Từ vựng phức tạp' },
-                { path: '04_Advanced/gifs', difficulty: 'advanced', category: 'Giao tiếp nâng cao' },
-            ];
+            // Chỉ lấy những bài học có customId (tức là bài học được tạo từ seed)
+            const lessons = await this.lessonModel.find({ customId: { $exists: true } }).exec();
 
-            let totalSynced = 0;
-            const results: any[] = [];
+            for (const lesson of lessons) {
+                const mapping = lesson.customId ? lessonFolderMapping[lesson.customId] : undefined;
 
-            for (const folder of folders) {
-                console.log(`Syncing folder: ${folder.path}...`);
+                // Nếu bài học không nằm trong danh sách mapping (VD: bài practice p1, p2...), bỏ qua
+                if (!mapping) {
+                    continue;
+                }
+
                 try {
-                    const files = await this.mediaService.listFiles(folder.path);
+                    const allFiles = await this.mediaService.listFiles(mapping.folder);
 
-                    for (const file of files) {
-                        // Clean filename
-                        // Remove extension
-                        let cleanName = file.name.replace(/\.[^/.]+$/, "");
-                        // Remove prefix numbers like "0_", "1_"
-                        cleanName = cleanName.replace(/^\d+_/, "");
-                        // Replace underscores with spaces
-                        cleanName = cleanName.replace(/_/g, " ");
-                        // Capitalize first letter
-                        cleanName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+                    // Filter files theo mapping
+                    const filteredFiles = mapping.fileFilter
+                        ? allFiles.filter((f) => mapping.fileFilter!(f.name))
+                        : allFiles;
 
-                        const lessonData = {
-                            title: cleanName,
-                            description: folder.category,
-                            difficulty: folder.difficulty,
-                            mediaUrl: file.publicUrl,
-                            folder: folder.path
-                        };
+                    // Tạo contents array
+                    const contents = filteredFiles.map((file) => this.createContentFromFile(file));
+                    
+                    // Sắp xếp contents theo label (A, B, C...)
+                    contents.sort((a, b) => a.label.localeCompare(b.label, 'en', { numeric: true }));
 
-                        await this.lessonModel.updateOne(
-                            { mediaUrl: file.publicUrl },
-                            { $set: lessonData },
-                            { upsert: true }
-                        );
-                        totalSynced++;
-                    }
-                    results.push({ folder: folder.path, count: files.length, status: 'success' });
+                    // Update lesson với contents mới
+                    await this.lessonModel.updateOne(
+                        { _id: lesson._id },
+                        { $set: { contents, questionCount: contents.length } },
+                    );
+
+                    results.push({
+                        lessonId: lesson._id,
+                        customId: lesson.customId,
+                        title: lesson.title,
+                        contentsCount: contents.length,
+                        status: 'success',
+                    });
                 } catch (err) {
-                    console.error(`Error syncing folder ${folder.path}:`, err);
-                    results.push({ folder: folder.path, error: err.message, status: 'failed' });
+                    results.push({
+                        lessonId: lesson._id,
+                        customId: lesson.customId,
+                        error: err.message,
+                        status: 'failed',
+                    });
                 }
             }
 
-            console.log(`Sync completed. Total lessons synced: ${totalSynced}`);
-            return { totalSynced, details: results };
+            const successCount = results.filter((r) => r.status === 'success').length;
+            return {
+                message: 'Sync Contents Completed',
+                totalLessons: results.length,
+                successCount,
+                details: results,
+            };
         } catch (error) {
-            console.error('Sync failed:', error);
+            console.error('Sync contents failed:', error);
             throw error;
         }
+    }
+
+    private createContentFromFile(file: { name: string; publicUrl: string }): {
+        label: string;
+        description: string;
+        videoUrl: string;
+        thumbnailUrl?: string;
+    } {
+        let label = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
+
+        const numMatch = label.match(/^(\d+)_/);
+        if (numMatch) {
+            label = numMatch[1];
+        } else {
+            if (label.length === 1) {
+                label = label.toUpperCase();
+            } else {
+                label = label.replace(/_/g, ' ');
+                label = label.charAt(0).toUpperCase() + label.slice(1);
+            }
+        }
+
+        return {
+            label,
+            description: `Mô tả cho ${label}`, // Sau này có thể sửa DB để update mô tả thật
+            videoUrl: file.publicUrl,
+            thumbnailUrl: undefined,
+        };
     }
 }

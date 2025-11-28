@@ -30,11 +30,40 @@ export class LessonsController {
         return this.lessonsService.create(createLessonDto);
     }
 
-    @Post('sync-data')
-    @ApiOperation({ summary: 'Đồng bộ dữ liệu bài học từ Supabase Storage' })
-    @ApiResponse({ status: 201, description: 'Đồng bộ thành công' })
-    syncData() {
-        return this.lessonsService.syncLessonsFromSupabase();
+    // --- ĐÃ XÓA ENDPOINT sync-data CŨ VÌ KHÔNG DÙNG NỮA ---
+
+    @Post('sync-contents')
+    @ApiOperation({
+        summary: 'Đồng bộ contents cho các bài học (Grid Layout)',
+        description: 'Duyệt qua các bài học trong DB, lấy files từ Supabase và tạo mảng contents (Label, VideoUrl...) cho mỗi bài học',
+    })
+    @ApiResponse({
+        status: 201,
+        description: 'Đồng bộ contents thành công',
+        schema: {
+            type: 'object',
+            properties: {
+                message: { type: 'string', example: 'Sync Contents Completed' },
+                totalLessons: { type: 'number', example: 10 },
+                successCount: { type: 'number', example: 8 },
+                details: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            lessonId: { type: 'string' },
+                            customId: { type: 'string' },
+                            title: { type: 'string' },
+                            contentsCount: { type: 'number' },
+                            status: { type: 'string', enum: ['success', 'failed'] },
+                        },
+                    },
+                },
+            },
+        },
+    })
+    syncContents() {
+        return this.lessonsService.syncLessonContents();
     }
 
     @Get()
@@ -52,7 +81,7 @@ export class LessonsController {
 
     @Get('by-custom-id/:customId')
     @ApiOperation({ summary: 'Lấy bài học theo Custom ID' })
-    @ApiParam({ name: 'customId', description: 'Custom ID của bài học' })
+    @ApiParam({ name: 'customId', description: 'Custom ID của bài học (VD: n1, n2)' })
     @ApiResponse({ status: 200, description: 'Chi tiết bài học' })
     @ApiResponse({ status: 404, description: 'Không tìm thấy bài học' })
     findByCustomId(@Param('customId') customId: string) {
@@ -62,7 +91,7 @@ export class LessonsController {
     @Get(':id')
     @ApiOperation({
         summary: 'Lấy chi tiết một bài học theo ID',
-        description: 'API này trả về thông tin chi tiết của bài học bao gồm mediaUrl để Frontend render video (hỗ trợ tua nhanh/chậm)',
+        description: 'API này trả về thông tin chi tiết của bài học bao gồm mảng contents để Frontend render Grid Cards',
     })
     @ApiParam({
         name: 'id',
@@ -71,18 +100,30 @@ export class LessonsController {
     })
     @ApiResponse({
         status: 200,
-        description: 'Chi tiết bài học với mediaUrl để render video',
+        description: 'Chi tiết bài học với contents array',
         schema: {
             type: 'object',
             properties: {
                 _id: { type: 'string', example: '507f1f77bcf86cd799439011' },
-                title: { type: 'string', example: 'Chữ A' },
+                title: { type: 'string', example: 'Bài 1: Chữ A-H' },
                 description: { type: 'string', example: 'Chữ cái & Số' },
                 difficulty: { type: 'string', enum: ['newbie', 'basic', 'advanced'], example: 'newbie' },
                 type: { type: 'string', enum: ['lesson', 'practice'], example: 'lesson' },
-                questionCount: { type: 'number', example: 1 },
-                mediaUrl: { type: 'string', example: 'https://xxx.supabase.co/storage/v1/object/public/vsl-media/01_Alphabet_Numbers/gifs/A.gif' },
+                questionCount: { type: 'number', example: 8 },
                 folder: { type: 'string', example: '01_Alphabet_Numbers/gifs' },
+                contents: {
+                    type: 'array',
+                    description: 'Mảng các card content để render grid',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            label: { type: 'string', example: 'A' },
+                            description: { type: 'string', example: 'Nắm tay, ngón cái dựng thẳng' },
+                            videoUrl: { type: 'string', example: 'https://xxx.supabase.co/.../a.gif' },
+                            thumbnailUrl: { type: 'string', example: null },
+                        },
+                    },
+                },
                 createdAt: { type: 'string', format: 'date-time' },
                 updatedAt: { type: 'string', format: 'date-time' },
             },
@@ -91,26 +132,10 @@ export class LessonsController {
     @ApiResponse({
         status: 400,
         description: 'ID không đúng định dạng MongoDB ObjectId',
-        schema: {
-            type: 'object',
-            properties: {
-                statusCode: { type: 'number', example: 400 },
-                message: { type: 'string', example: 'ID "abc123" không đúng định dạng MongoDB ObjectId' },
-                error: { type: 'string', example: 'Bad Request' },
-            },
-        },
     })
     @ApiResponse({
         status: 404,
         description: 'Không tìm thấy bài học với ID này',
-        schema: {
-            type: 'object',
-            properties: {
-                statusCode: { type: 'number', example: 404 },
-                message: { type: 'string', example: 'Không tìm thấy bài học với ID: 507f1f77bcf86cd799439011' },
-                error: { type: 'string', example: 'Not Found' },
-            },
-        },
     })
     findOne(@Param('id') id: string) {
         return this.lessonsService.findOne(id);
