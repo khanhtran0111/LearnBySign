@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as mongoose from 'mongoose';
@@ -13,74 +13,113 @@ export class ProgressService {
         @InjectModel(Progress.name) private progressModel: Model<ProgressDocument>,
         @InjectModel(Lesson.name) private lessonModel: Model<LessonDocument>,
         @InjectModel(User.name) private userModel: Model<UserDocument>,
-    ) { }
+    ) {}
 
+    /**
+     * Lưu/Cập nhật tiến độ học tập của user
+     * - Type được lấy từ Lesson (Source of Truth), không dùng từ DTO
+     * - Nếu chưa có record: Tạo mới với completed=true
+     * - Nếu đã có: Cập nhật lastViewedAt, giữ lại score cao nhất (kỷ lục)
+     */
     async markProgress(markProgressDto: MarkProgressDto): Promise<Progress> {
-        const { idUser, idLesson, type, questionCount, correctAnswers, ...updateData } = markProgressDto;
+        const { idUser, idLesson, correctAnswers, score } = markProgressDto;
 
-        let calculatedScore = 0;
-        if (type === 'lesson' && questionCount) {
-            calculatedScore = questionCount * 10;
-        } else if (type === 'practice' && correctAnswers) {
-            calculatedScore = correctAnswers * 15;
+        // 1. Validate userId
+        if (!mongoose.Types.ObjectId.isValid(idUser)) {
+            throw new BadRequestException(`userId "${idUser}" không đúng định dạng ObjectId`);
         }
 
-        // Kiểm tra xem idLesson có phải là ObjectId hợp lệ không
-        let lessonId = idLesson;
+        // 2. Validate & resolve lessonId, lấy type từ Lesson (Source of Truth)
+        let resolvedLessonId: string;
+        let lessonType: 'lesson' | 'practice';
+
         if (!mongoose.Types.ObjectId.isValid(idLesson)) {
-            try {
-                const lesson = await this.lessonModel.findOne({ customId: idLesson }).exec();
-                if (lesson) {
-                    lessonId = lesson._id.toString();
-                } else {
-                    const newLesson = await this.lessonModel.create({
-                        title: `Lesson ${idLesson}`,
-                        description: 'Auto-generated lesson',
-                        difficulty: 'newbie',
-                        type: type,
-                        questionCount: questionCount || 1,
-                        mediaUrl: `/videos/${idLesson}`,
-                        folder: 'auto',
-                        customId: idLesson,
-                    });
-                    lessonId = newLesson._id.toString();
-                }
-            } catch (err) {
-                throw new Error('Invalid lesson ID');
+            // Tìm theo customId
+            const lesson = await this.lessonModel.findOne({ customId: idLesson }).exec();
+            if (!lesson) {
+                throw new NotFoundException(`Không tìm thấy bài học với customId: ${idLesson}`);
+            }
+            resolvedLessonId = lesson._id.toString();
+            lessonType = lesson.type;
+        } else {
+            // Tìm theo ObjectId
+            const lesson = await this.lessonModel.findById(idLesson).exec();
+            if (!lesson) {
+                throw new NotFoundException(`Không tìm thấy bài học với ID: ${idLesson}`);
+            }
+            resolvedLessonId = lesson._id.toString();
+            lessonType = lesson.type;
+        }
+
+        // 3. Tính điểm
+        // - Nếu có score từ DTO → dùng luôn
+        // - Nếu type=practice và có correctAnswers → tính: correctAnswers * 15
+        // - Còn lại → 0
+        let calculatedScore = score ?? 0;
+        if (score === undefined || score === null) {
+            if (lessonType === 'practice' && correctAnswers) {
+                calculatedScore = correctAnswers * 15;
             }
         }
 
-        const progress = await this.progressModel.findOneAndUpdate(
-            { idUser, idLesson: lessonId },
-            {
-                $set: {
-                    type,
-                    questionCount: questionCount || 0,
-                    correctAnswers: correctAnswers || 0,
-                    score: calculatedScore,
-                    ...updateData,
-                    lastViewedAt: new Date()
-                }
-            },
-            { new: true, upsert: true }
-        ).exec();
+        // 4. Kiểm tra record hiện tại để so sánh điểm
+        const existingProgress = await this.progressModel
+            .findOne({ idUser, idLesson: resolvedLessonId })
+            .exec();
 
-        if (updateData.completed) {
-            await this.updateUserStats(idUser, type, calculatedScore);
+        // Giữ lại điểm cao nhất (kỷ lục)
+        const finalScore = existingProgress
+            ? Math.max(existingProgress.score || 0, calculatedScore)
+            : calculatedScore;
+
+        // 5. Upsert progress (type lấy từ Lesson, không từ DTO)
+        const progress = await this.progressModel
+            .findOneAndUpdate(
+                { idUser, idLesson: resolvedLessonId },
+                {
+                    $set: {
+                        type: lessonType,
+                        correctAnswers: correctAnswers || 0,
+                        score: finalScore,
+                        completed: true,
+                        lastViewedAt: new Date(),
+                    },
+                },
+                { new: true, upsert: true },
+            )
+            .exec();
+
+        // 6. Cập nhật stats cho user (chỉ cộng điểm chênh lệch)
+        const pointsToAdd = existingProgress
+            ? Math.max(0, calculatedScore - (existingProgress.score || 0))
+            : calculatedScore;
+
+        if (pointsToAdd > 0) {
+            await this.updateUserStats(idUser, lessonType, pointsToAdd);
+        } else if (!existingProgress) {
+            // Lần đầu hoàn thành, cập nhật streak
+            await this.updateUserStats(idUser, lessonType, calculatedScore);
         }
 
         return progress;
     }
 
-    private async updateUserStats(userId: string, type: 'lesson' | 'practice', points: number): Promise<void> {
+    private async updateUserStats(
+        userId: string,
+        type: 'lesson' | 'practice',
+        points: number,
+    ): Promise<void> {
         const user = await this.userModel.findById(userId);
         if (!user) return;
 
+        // Cộng điểm theo type
         if (type === 'lesson') {
             user.lessonPoints = (user.lessonPoints || 0) + points;
         } else {
             user.practicePoints = (user.practicePoints || 0) + points;
         }
+
+        // Cập nhật streak
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -88,16 +127,18 @@ export class ProgressService {
             const lastStudy = new Date(user.lastStudyDate);
             lastStudy.setHours(0, 0, 0, 0);
 
-            const diffDays = Math.floor((today.getTime() - lastStudy.getTime()) / (1000 * 60 * 60 * 24));
+            const diffDays = Math.floor(
+                (today.getTime() - lastStudy.getTime()) / (1000 * 60 * 60 * 24),
+            );
 
-            if (diffDays === 0) {
-            } else if (diffDays === 1) {
+            if (diffDays === 1) {
                 user.currentStreak = (user.currentStreak || 0) + 1;
                 user.lastStudyDate = today;
-            } else {
+            } else if (diffDays > 1) {
                 user.currentStreak = 1;
                 user.lastStudyDate = today;
             }
+            // diffDays === 0: không làm gì (đã học hôm nay rồi)
         } else {
             user.currentStreak = 1;
             user.lastStudyDate = today;
@@ -106,42 +147,40 @@ export class ProgressService {
         await user.save();
     }
 
-    async findAll(): Promise<Progress[]> {
-        return this.progressModel.find().populate('idLesson').exec();
-    }
-
     async findByUser(idUser: string): Promise<Progress[]> {
-        return this.progressModel.find({ idUser }).populate('idLesson').exec();
+        return this.progressModel
+            .find({ idUser })
+            .populate('idLesson', 'title description difficulty customId type')
+            .exec();
     }
 
     async seedProgressForUser(idUser: string): Promise<any> {
         try {
             console.log(`Seeding progress for user: ${idUser}`);
 
-            // 1. Get all lessons
             const allLessons = await this.lessonModel.find().exec();
             if (allLessons.length === 0) {
                 return { message: 'No lessons found to seed.' };
             }
 
-            // 2. Randomly select 50-70% of lessons
-            const percentage = 0.5 + Math.random() * 0.2; // 0.5 to 0.7
+            const percentage = 0.5 + Math.random() * 0.2;
             const numberOfLessonsToSeed = Math.floor(allLessons.length * percentage);
 
-            // Shuffle and pick
             const shuffled = allLessons.sort(() => 0.5 - Math.random());
             const selectedLessons = shuffled.slice(0, numberOfLessonsToSeed);
 
-            // 3. Delete old progress for this user
             await this.progressModel.deleteMany({ idUser }).exec();
 
-            // 4. Create new progress data
-            const progressData = selectedLessons.map(lesson => ({
+            const progressData = selectedLessons.map((lesson) => ({
                 idUser,
                 idLesson: lesson._id,
+                type: lesson.type,
                 completed: true,
-                score: Math.floor(Math.random() * 6) + 5, // 5 to 10
-                lastViewedAt: new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)) // Random within last 7 days
+                score: Math.floor(Math.random() * 6) + 5,
+                correctAnswers: lesson.type === 'practice' ? Math.floor(Math.random() * 5) + 1 : 0,
+                lastViewedAt: new Date(
+                    Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000),
+                ),
             }));
 
             await this.progressModel.insertMany(progressData);
@@ -150,9 +189,8 @@ export class ProgressService {
             return {
                 message: 'Success',
                 seededCount: progressData.length,
-                totalLessons: allLessons.length
+                totalLessons: allLessons.length,
             };
-
         } catch (error) {
             console.error('Seeding progress failed:', error);
             throw error;

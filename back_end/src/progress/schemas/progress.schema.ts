@@ -1,7 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { User } from '../../users/schemas/user.schema';
-import { Lesson } from '../../lessons/schemas/lesson.schema';
 
 export type ProgressDocument = HydratedDocument<Progress>;
 
@@ -21,9 +19,6 @@ export class Progress {
 
     @Prop({ default: 0 })
     score: number;
-
-    @Prop({ default: 0 })
-    questionCount: number;
 
     @Prop({ default: 0 })
     correctAnswers: number;
