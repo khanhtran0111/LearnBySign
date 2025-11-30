@@ -20,3 +20,6 @@ build/
 gif_stage/
 *.log
 
+venv/
+__pycache__/
+*.pyc
