@@ -1,27 +1,41 @@
-import { IsBoolean, IsMongoId, IsNumber, IsOptional, IsEnum, IsString } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class MarkProgressDto {
+    @ApiProperty({
+        description: 'MongoDB ObjectId của user',
+        example: '507f1f77bcf86cd799439012',
+    })
     @IsString()
     idUser: string;
 
+    @ApiProperty({
+        description: 'MongoDB ObjectId hoặc customId của bài học',
+        example: '507f1f77bcf86cd799439013',
+    })
     @IsString()
     idLesson: string;
 
-    @IsEnum(['lesson', 'practice'])
-    type: 'lesson' | 'practice';
-
+    @ApiPropertyOptional({
+        description: 'Đánh dấu đã hoàn thành (mặc định true khi gọi API này)',
+        example: true,
+    })
     @IsOptional()
     @IsBoolean()
     completed?: boolean;
 
+    @ApiPropertyOptional({
+        description: 'Điểm số (bắt buộc nếu type=lesson, hoặc tự tính từ correctAnswers nếu type=practice)',
+        example: 80,
+    })
     @IsOptional()
     @IsNumber()
     score?: number;
 
-    @IsOptional()
-    @IsNumber()
-    questionCount?: number;
-
+    @ApiPropertyOptional({
+        description: 'Số câu trả lời đúng (dùng để tính điểm cho type=practice: correctAnswers * 15)',
+        example: 6,
+    })
     @IsOptional()
     @IsNumber()
     correctAnswers?: number;
