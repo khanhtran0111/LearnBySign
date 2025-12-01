@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 import { ProgressService } from './progress.service';
 import { MarkProgressDto } from './dto/mark-progress.dto';
 
@@ -8,7 +9,19 @@ import { MarkProgressDto } from './dto/mark-progress.dto';
 export class ProgressController {
     constructor(private readonly progressService: ProgressService) {}
 
+    @Get()
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Lấy tiến độ của user hiện tại' })
+    @ApiResponse({ status: 200, description: 'Danh sách tiến độ của user' })
+    @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+    getMyProgress(@Req() req: any) {
+        return this.progressService.findByUser(req.user.sub);
+    }
+
     @Post('mark')
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
     @ApiOperation({
         summary: 'Lưu kết quả học tập',
         description: `Lưu/Cập nhật tiến độ khi user hoàn thành bài học hoặc bài tập.

@@ -7,6 +7,7 @@ import { VideoPlayer } from "./VideoPlayer";
 import { PracticeMode } from "./PracticeMode";
 import { GameMode } from "./GameMode";
 import { Lesson } from "./LessonCard";
+import { Button } from "./ui/button";
 import { useRouter } from 'next/navigation'; 
 import axios from 'axios';
 import { lessonsData } from '@/app/data/lessonsData';
@@ -215,6 +216,7 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
   const [user, setUser] = useState<User | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<LessonType>("study");
   const [activeLevel, setActiveLevel] = useState<StudyLevel>("newbie");
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
@@ -293,16 +295,22 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
   }  
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
+    console.log('[DashboardPage] Checking auth, token:', token ? 'exists' : 'none');
+    
     if (!token) {
-      router.push('/login');
+      console.log('[DashboardPage] No token, redirecting to login');
+      router.replace('/login');
       return;
     }
 
     const loadProfile = async () => {
       try {
+        console.log('[DashboardPage] Loading user profile...');
         const profileData = await fetchUserProfile(token);
         setUser(profileData);
+        console.log('[DashboardPage] User profile loaded:', profileData.email);
 
+        console.log('[DashboardPage] Loading user stats...');
         const statsResponse = await axios.get(`${BACKEND_URL}/users/me/stats`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -310,8 +318,10 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
         });
         if (statsResponse.data) {
           setUserStats(statsResponse.data);
+          console.log('[DashboardPage] Stats loaded');
         }
 
+        console.log('[DashboardPage] Loading progress...');
         const progressResponse = await axios.get(`${BACKEND_URL}/progress`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -324,10 +334,35 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
               .map((p: any) => String(p.idLesson?.customId || p.idLesson?._id || p.idLesson))
           );
           setCompletedLessons(completed);
+          console.log('[DashboardPage] Progress loaded, completed lessons:', completed.size);
         }
+        
+        console.log('[DashboardPage] All data loaded successfully');
+        setIsLoading(false);
       } catch (err) {
-        router.push('/login'); 
-      } finally {
+        console.error('[DashboardPage] Error loading dashboard data:', err);
+        if (axios.isAxiosError(err)) {
+          console.error('[DashboardPage] API Error:', err.response?.status, err.response?.data);
+          
+          // Nếu là lỗi 401 (unauthorized), redirect về login
+          if (err.response?.status === 401) {
+            localStorage.removeItem('accessToken');
+            setIsLoading(false);
+            console.log('[DashboardPage] Unauthorized, redirecting to login');
+            router.replace('/login');
+            return;
+          }
+          
+          // Nếu là lỗi khác (network, 500, etc), hiển thị thông báo lỗi
+          if (err.code === 'ERR_NETWORK' || !err.response) {
+            setLoadError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend đang chạy.');
+          } else {
+            setLoadError(`Lỗi tải dữ liệu: ${err.response?.status || 'Unknown error'}`);
+          }
+        } else {
+          setLoadError('Có lỗi xảy ra khi tải dữ liệu.');
+        }
+        
         setIsLoading(false);
       }
     };
@@ -335,10 +370,45 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
     loadProfile();
   }, [router]);
   
-  if (isLoading || !user) {
+  if (isLoading) {
     return (
         <div className="min-h-screen flex items-center justify-center">
             <p>Đang tải dữ liệu người dùng...</p> 
+        </div>
+    );
+  }
+
+  // Hiển thị lỗi nếu không thể tải dữ liệu
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+          <h2 className="text-xl font-semibold text-red-700 mb-2">Lỗi kết nối</h2>
+          <p className="text-red-600 mb-4">{loadError}</p>
+          <div className="space-y-2">
+            <Button
+              onClick={() => window.location.reload()}
+              className="w-full bg-blue-500 hover:bg-blue-600"
+            >
+              Thử lại
+            </Button>
+            <Button
+              onClick={handleSignOut}
+              variant="outline"
+              className="w-full"
+            >
+              Đăng xuất
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+        <div className="min-h-screen flex items-center justify-center">
+            <p>Không tìm thấy thông tin người dùng...</p> 
         </div>
     );
   }

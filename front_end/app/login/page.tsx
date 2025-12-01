@@ -8,7 +8,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card } from "../components/ui/card";
 import { Hand, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ImageWithFallback } from "../components/fallback/ImageWithFallback";
 import axios from "axios";
 import { useRouter } from "next/navigation";
@@ -25,6 +25,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   
   const {
     register,
@@ -33,6 +34,43 @@ export default function LoginPage() {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
+
+  // Kiểm tra nếu đã đăng nhập
+  useEffect(() => {
+    const checkExistingAuth = async () => {
+      const token = localStorage.getItem('accessToken');
+      console.log('[LoginPage] Checking existing auth, token:', token ? 'exists' : 'none');
+      
+      if (token) {
+        try {
+          console.log('[LoginPage] Verifying token with backend...');
+          const response = await axios.get(`${BACKEND_URL}/users/me`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          
+          console.log('[LoginPage] Token valid, user:', response.data.email);
+          router.replace('/dashboard');
+          return;
+        } catch (error) {
+          console.log('[LoginPage] Token invalid or backend error:', error);
+          if (axios.isAxiosError(error) && error.code === 'ERR_NETWORK') {
+            console.log('[LoginPage] Backend is not running');
+            setApiError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend đang chạy.');
+            setIsCheckingAuth(false);
+            return;
+          }
+          localStorage.removeItem('accessToken');
+        }
+      }
+      
+      console.log('[LoginPage] Showing login form');
+      setIsCheckingAuth(false);
+    };
+
+    checkExistingAuth();
+  }, [router]);
 
   const onSubmit = async (formData: LoginFormValues) => {
     setApiError(null);
@@ -45,27 +83,58 @@ export default function LoginPage() {
       const token = response.data?.access_token || response.data?.token;
 
       if (token) {
+        console.log('[LoginPage] Login successful, saving token');
         localStorage.setItem('accessToken', token);
-        router.push('/dashboard');
+        
+        // Verify token bằng cách gọi API user profile
+        try {
+          console.log('[LoginPage] Verifying new token...');
+          await axios.get(`${BACKEND_URL}/users/me`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          
+          // Token hợp lệ, chuyển đến dashboard
+          console.log('[LoginPage] Token verified, redirecting to dashboard');
+          router.replace('/dashboard');
+        } catch (verifyError) {
+          console.error("[LoginPage] Token verification failed:", verifyError);
+          localStorage.removeItem('accessToken');
+          setApiError("Xác thực thất bại. Vui lòng thử lại.");
+        }
       } else {
         setApiError("Đăng nhập thành công nhưng không nhận được token xác thực.");
       }
     } catch (error) {
       console.error("Lỗi đăng nhập:", error);
 
-      if (axios.isAxiosError(error) && error.response) {
-        const errorMessage = error.response.data?.message || "Email hoặc mật khẩu không đúng.";
-        
-        if (Array.isArray(errorMessage)) {
-           setApiError(errorMessage.join('; '));
-        } else {
-           setApiError(errorMessage);
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ERR_NETWORK' || !error.response) {
+          setApiError("Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend đang chạy.");
+        } else if (error.response) {
+          const errorMessage = error.response.data?.message || "Email hoặc mật khẩu không đúng.";
+          
+          if (Array.isArray(errorMessage)) {
+            setApiError(errorMessage.join('; '));
+          } else {
+            setApiError(errorMessage);
+          }
         }
       } else {
-        setApiError("Không thể kết nối đến máy chủ.");
+        setApiError("Có lỗi xảy ra khi đăng nhập.");
       }
     }
   };
+
+  // Hiển thị loading trong khi kiểm tra authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+        <p className="text-lg">Đang kiểm tra xác thực...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 px-4 py-12">

@@ -54,6 +54,8 @@ export default function LessonPage() {
   const loadLesson = async () => {
     try {
       const response = await axios.get(`${BACKEND_URL}/lessons/by-custom-id/${customId}`);
+      console.log('[LessonPage] Loaded lesson:', response.data);
+      console.log('[LessonPage] Contents:', response.data.contents);
       setLesson(response.data);
     } catch (error) {
       console.error("Error loading lesson:", error);
@@ -199,6 +201,8 @@ export default function LessonPage() {
                 key={index}
                 className="p-6 hover:shadow-xl transition-all duration-300 border-2 hover:border-blue-400 cursor-pointer hover:scale-105"
                 onClick={() => {
+                  console.log('[LessonPage] Selected item:', item);
+                  console.log('[LessonPage] VideoUrl:', item.videoUrl);
                   setSelectedLetter(item);
                   setCurrentIndex(index);
                 }}
