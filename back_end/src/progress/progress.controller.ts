@@ -19,6 +19,60 @@ export class ProgressController {
         return this.progressService.findByUser(req.user.sub);
     }
 
+    @Get('dashboard-stats')
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
+    @ApiOperation({
+        summary: 'Lấy thống kê Dashboard',
+        description: 'Trả về các số liệu thống kê học tập của user: streak, điểm, tiến độ theo level',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Thống kê Dashboard',
+        schema: {
+            type: 'object',
+            properties: {
+                streak: { type: 'number', example: 2, description: 'Số ngày học liên tiếp' },
+                totalScore: { type: 'number', example: 150, description: 'Tổng điểm tích lũy' },
+                totalCompleted: { type: 'number', example: 10, description: 'Tổng số bài đã hoàn thành' },
+                overallProgress: { type: 'number', example: 35, description: '% hoàn thành toàn bộ khóa học' },
+                levels: {
+                    type: 'object',
+                    properties: {
+                        newbie: {
+                            type: 'object',
+                            properties: {
+                                completed: { type: 'number', example: 5 },
+                                total: { type: 'number', example: 15 },
+                                percent: { type: 'number', example: 33 },
+                            },
+                        },
+                        basic: {
+                            type: 'object',
+                            properties: {
+                                completed: { type: 'number', example: 3 },
+                                total: { type: 'number', example: 20 },
+                                percent: { type: 'number', example: 15 },
+                            },
+                        },
+                        advanced: {
+                            type: 'object',
+                            properties: {
+                                completed: { type: 'number', example: 2 },
+                                total: { type: 'number', example: 25 },
+                                percent: { type: 'number', example: 8 },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+    getDashboardStats(@Req() req: any) {
+        return this.progressService.getDashboardStats(req.user.sub);
+    }
+
     @Post('mark')
     @UseGuards(AuthGuard('jwt'))
     @ApiBearerAuth()
