@@ -1,317 +1,573 @@
 "use client";
-import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { DashboardHeader } from '@/app/components/DashboardHeader';
-import { Card } from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
-import { Badge } from '@/app/components/ui/badge';
-import { PlayCircle, X, BookOpen, CheckCircle, ArrowLeft } from 'lucide-react';
+
+
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import axios from "axios";
+import { ArrowLeft, PlayCircle, X, CheckCircle, Loader2 } from "lucide-react";
+import { DashboardHeader } from "@/app/components/DashboardHeader";
+import { Card } from "@/app/components/ui/card";
+import { Button } from "@/app/components/ui/button";
+import { Badge } from "@/app/components/ui/badge";
+
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+
 interface User {
-  fullName: string;
-  email: string;
-  avatarUrl?: string;
+ _id: string; // MongoDB ID
+ id?: string;
+ fullName: string;
+ email: string;
+ avatarUrl?: string;
 }
+
+
+interface LessonContent {
+ label: string;
+ description: string;
+ videoUrl: string;
+ order?: number;
+}
+
+
+interface LessonData {
+ _id: string;
+ id?: string;
+ customId: string;
+ title: string;
+ description: string;
+ contents: LessonContent[];
+ letters?: any[]; // Fallback cho cấu trúc cũ nếu có
+}
+
 
 export default function LessonPage() {
-  const params = useParams();
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [selectedLetter, setSelectedLetter] = useState<any>(null);
-  const [currentIndex, setCurrentIndex] = useState<number | null>(null);
-  const slug = params.slug as string;
-  const [lesson, setLesson] = useState<any>(null);
-  const customId = slug.split("-")[0];
+ const params = useParams();
+ const router = useRouter();
+ const slug = params.slug as string;
+ const customId = slug?.split("-")[0];
 
-  useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
 
-    const loadProfile = async () => {
-      try {
-        const response = await axios.get(`${BACKEND_URL}/users/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUser(response.data);
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.status === 401) {
-          localStorage.removeItem('accessToken');
-        }
-        router.push('/login');
-      }
-    };
+ // State Data
+ const [user, setUser] = useState<User | null>(null);
+ const [lesson, setLesson] = useState<LessonData | null>(null);
 
-    loadProfile();
-  }, [router]);
 
-  useEffect(() => {
-  const loadLesson = async () => {
-    try {
-      const response = await axios.get(`${BACKEND_URL}/lessons/by-custom-id/${customId}`);
-      setLesson(response.data);
-    } catch (error) {
-      console.error("Error loading lesson:", error);
-    }
-  };
+ // State UI
+ const [selectedContent, setSelectedContent] = useState<LessonContent | null>(null);
+ const [currentIndex, setCurrentIndex] = useState<number | null>(null);
+ const [isLoading, setIsLoading] = useState(true);
+ const [isSubmitting, setIsSubmitting] = useState(false);
 
-  loadLesson();
-}, [slug]);
 
-  const handleClose = () => {
-    router.push('/dashboard');
-  };
+ // Load Data
+ useEffect(() => {
+   const token = localStorage.getItem("accessToken");
+   if (!token) {
+     router.replace("/login");
+     return;
+   }
 
-  const handleNext = () => {
-    if (!lesson || currentIndex === null) return;
-    const nextIndex = currentIndex + 1;
 
-    if (nextIndex < lesson.contents.length) {
-      setCurrentIndex(nextIndex);
-      setSelectedLetter(lesson.contents[nextIndex]);
-    } else {
-      // Return to beginning
-      setCurrentIndex(0);
-      setSelectedLetter(lesson.contents[0]);
-    }
-  };
-
-  const handlePrev = () => {
-    if (!lesson || currentIndex === null) return;
-    const prevIndex = currentIndex - 1;
-
-    if (prevIndex >= 0) {
-      setCurrentIndex(prevIndex);
-      setSelectedLetter(lesson.contents[prevIndex]);
-    } else {
-      // Go to last
-      const last = lesson.contents.length - 1;
-      setCurrentIndex(last);
-      setSelectedLetter(lesson.contents[last]);
-    }
-  };
-
-  const handleCompleteLesson = async () => {
-    const token = localStorage.getItem('accessToken');
-    if (!token || !user) return;
-
-    try {
-      // Lấy userId
-      const userResponse = await axios.get(`${BACKEND_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+   const initData = async () => {
+     try {
+       setIsLoading(true);
       
-      const userId = userResponse.data._id || userResponse.data.id;
-      const questionCount = lesson.letters?.length || 1;
+       const [userRes, lessonRes] = await Promise.all([
+         axios.get(`${BACKEND_URL}/users/me`, {
+           headers: { Authorization: `Bearer ${token}` },
+         }),
+         axios.get(`${BACKEND_URL}/lessons/by-custom-id/${customId}`)
+       ]);
 
-      // Gọi API mark progress với customId trực tiếp
-      // Backend sẽ tự động xử lý việc tìm hoặc tạo lesson
-      await axios.post(`${BACKEND_URL}/progress/mark`, {
-        idUser: userId,
-        idLesson: lesson.id, // Dùng customId (n1, n2, etc.)
-        type: 'lesson',
-        completed: true,
-        questionCount: lesson.contents.length
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
 
-      alert(`Chúc mừng! Bạn đã hoàn thành bài học và nhận được ${questionCount * 10} điểm!`);
-      router.push('/dashboard');
-    } catch (error) {
-      console.error('Error marking progress:', error);
-      if (axios.isAxiosError(error)) {
-        console.error('Response:', error.response?.data);
-        console.error('Status:', error.response?.status);
-      }
-      alert('Có lỗi xảy ra khi lưu tiến độ. Vui lòng kiểm tra console log và đảm bảo backend đang chạy.');
-    }
-  };
+       setUser(userRes.data);
+       setLesson(lessonRes.data);
+     } catch (error) {
+       console.error("Lỗi tải dữ liệu:", error);
+       if (axios.isAxiosError(error) && error.response?.status === 401) {
+         localStorage.removeItem("accessToken");
+         router.replace("/login");
+       } else if (axios.isAxiosError(error) && error.response?.status === 404) {
+         alert("Không tìm thấy bài học này.");
+         router.push("/dashboard");
+       }
+     } finally {
+       setIsLoading(false);
+     }
+   };
 
-  const handleViewProfile = () => router.push("/profile");
-  const handleSettings = () => router.push("/settings");
-  const handleSignOut = () => {
-    localStorage.removeItem('accessToken');
-    router.push('/login');
-  };
 
-  if (!user || !lesson) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Đang tải...</p>
-      </div>
-    );
-  }
+   if (customId) {
+     initData();
+   }
+ }, [customId, router]);
 
-  return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-blue-50/30">
-      <DashboardHeader
-        userName={user.fullName}
-        userEmail={user.email}
-        userAvatar={user.avatarUrl}
-        onViewProfile={() => router.push("/profile")}
-        onSettings={() => router.push("/settings")}
-        onSignOut={() => {
-          localStorage.removeItem("accessToken");
-          router.push("/login");
-        }}
-        onMenuClick={() => {}}
-      />
 
-      <div className="flex-1 p-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <Button variant="ghost" onClick={handleClose} className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Quay lại Dashboard
-          </Button>
+ // Handlers
+ const handleClose = () => router.push("/dashboard");
 
-          <h1 className="text-4xl font-bold mb-2">{lesson.title}</h1>
-          <p className="text-lg text-muted-foreground mb-4">
-            {lesson.description}
-          </p>
 
-          <div className="flex gap-2 mb-8">
-            <Badge variant="secondary" className="text-sm">
-              📚 {lesson.contents?.length} nội dung
-            </Badge>
-          </div>
+ const handleNext = useCallback(() => {
+   if (!lesson || currentIndex === null) return;
+   const contents = lesson.contents || [];
+   const nextIndex = currentIndex + 1;
 
-          {/* Instructions */}
-          <Card className="p-4 bg-blue-50 border-blue-200 mb-6">
-            <div className="flex items-center gap-3">
-              <PlayCircle className="w-6 h-6 text-blue-600" />
-              <p className="text-sm text-muted-foreground">
-                💡 Click để xem video/hình và điều hướng giữa các nội dung
-              </p>
-            </div>
-          </Card>
 
-          {/* Content Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {lesson.contents?.map((item: any, index: number) => (
-              <Card
-                key={index}
-                className="p-6 hover:shadow-xl transition-all duration-300 border-2 hover:border-blue-400 cursor-pointer hover:scale-105"
-                onClick={() => {
-                  setSelectedLetter(item);
-                  setCurrentIndex(index);
-                }}
-              >
-                <div className="text-center mb-4">
-                  <h3 className="text-3xl font-bold text-blue-600 mb-2">
-                    {item.label}
-                  </h3>
-                </div>
-                <p className="text-sm text-muted-foreground text-center">
-                  {item.description}
-                </p>
-              </Card>
-            ))}
-          </div>
+   if (nextIndex < contents.length) {
+     setCurrentIndex(nextIndex);
+     setSelectedContent(contents[nextIndex]);
+   } else {
+     // Loop về đầu
+     setCurrentIndex(0);
+     setSelectedContent(contents[0]);
+   }
+ }, [lesson, currentIndex]);
 
-          {/* Complete Lesson */}
-          <div className="mt-8 text-center">
-            <Card className="p-6 bg-gradient-to-r from-green-50 to-blue-50">
-              <div className="flex items-center justify-center gap-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
-                <div className="text-left">
-                  <h3 className="text-xl font-semibold">Hoàn thành bài học</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Đánh dấu hoàn thành sau khi luyện tập xong
-                  </p>
-                </div>
 
-                <Button
-                  size="lg"
-                  onClick={handleCompleteLesson}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle className="w-5 h-5 mr-2" />
-                  Hoàn thành
-                </Button>
-              </div>
-            </Card>
-          </div>
-        </div>
-      </div>
+ const handlePrev = useCallback(() => {
+   if (!lesson || currentIndex === null) return;
+   const contents = lesson.contents || [];
+   const prevIndex = currentIndex - 1;
 
-      {/* Modal */}
-      {selectedLetter && currentIndex !== null && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full overflow-hidden">
 
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-500 to-purple-600 text-white">
-              <div>
-                <h2 className="text-2xl font-bold">{selectedLetter.label}</h2>
-                <p className="text-sm opacity-90">{selectedLetter.description}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedLetter(null)}
-                className="text-white hover:bg-white/20"
-              >
-                <X className="w-6 h-6" />
-              </Button>
-            </div>
+   if (prevIndex >= 0) {
+     setCurrentIndex(prevIndex);
+     setSelectedContent(contents[prevIndex]);
+   } else {
+     // Loop về cuối
+     const last = contents.length - 1;
+     setCurrentIndex(last);
+     setSelectedContent(contents[last]);
+   }
+ }, [lesson, currentIndex]);
 
-            {/* Media */}
-            <div className="aspect-video bg-black flex items-center justify-center">
-              {selectedLetter.videoUrl?.endsWith(".gif") ? (
-                <img
-                  src={`${selectedLetter.videoUrl}?t=${Date.now()}`}
-                  alt={selectedLetter.label}
-                  className="max-h-full max-w-full object-contain"
-                />
-              ) : selectedLetter.videoUrl?.endsWith(".mp4") ? (
-                <video
-                  src={selectedLetter.videoUrl}
-                  controls
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <iframe
-                  width="100%"
-                  height="100%"
-                  src={selectedLetter.videoUrl}
-                  allowFullScreen
-                />
-              )}
-            </div>
 
-            {/* Navigation */}
-            <div className="flex items-center justify-between p-4 bg-white border-t">
+ const handleCompleteLesson = async () => {
+   if (!user || !lesson) return;
+  
+   setIsSubmitting(true);
+   const token = localStorage.getItem("accessToken");
 
-              <Button
-                onClick={handlePrev}
-                className="bg-blue-600 text-white hover:bg-blue-700"
-              >
-                ⬅️ Trước
-              </Button>
 
-              <p className="text-sm">
-                {currentIndex + 1} / {lesson.contents.length}
-              </p>
+   try {
+     const userId = user._id || user.id;
+     const lessonId = lesson._id || lesson.id;
+     const totalItems = lesson.contents?.length || 0;
+     const scoreEarned = totalItems * 10; // 10 điểm mỗi mục
 
-              <Button
-                onClick={handleNext}
-                className="bg-blue-600 text-white hover:bg-blue-700"
-              >
-                Tiếp ➡️
-              </Button>
 
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+     await axios.post(
+       `${BACKEND_URL}/progress/mark`,
+       {
+         idUser: userId,
+         idLesson: lessonId,
+         type: "lesson",
+         completed: true,
+         questionCount: totalItems,
+         score: scoreEarned
+       },
+       {
+         headers: { Authorization: `Bearer ${token}` },
+       }
+     );
+
+
+     // Hiển thị thông báo
+     alert(`🎉 Chúc mừng! Bạn đã hoàn thành bài học và nhận được ${scoreEarned} điểm!`);
+     router.push("/dashboard");
+
+
+   } catch (error) {
+     console.error("Lỗi lưu tiến độ:", error);
+     alert("Có lỗi xảy ra khi lưu kết quả. Vui lòng thử lại.");
+   } finally {
+     setIsSubmitting(false);
+   }
+ };
+
+
+ // Handlers cho Header
+ const handleSignOut = () => {
+   localStorage.removeItem("accessToken");
+   router.push("/login");
+ };
+
+
+ // Render
+ if (isLoading) {
+   return (
+     <div className="min-h-screen flex items-center justify-center bg-white">
+       <div className="flex flex-col items-center gap-2">
+           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+           <p className="text-muted-foreground">Đang tải bài học...</p>
+       </div>
+     </div>
+   );
+ }
+
+
+ if (!user || !lesson) return null;
+
+
+ return (
+   <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-blue-50/30">
+     <DashboardHeader
+       userName={user.fullName}
+       userEmail={user.email}
+       userAvatar={user.avatarUrl}
+       onViewProfile={() => router.push("/profile")}
+       onSettings={() => router.push("/settings")}
+       onSignOut={handleSignOut}
+       onMenuClick={() => {}}
+     />
+
+
+     <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+       <div className="max-w-6xl mx-auto">
+         {/* Top Bar */}
+         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+           <div>
+               <Button variant="ghost" onClick={handleClose} className="mb-2 pl-0 hover:pl-2 transition-all">
+                   <ArrowLeft className="w-4 h-4 mr-2" />
+                   Quay lại Dashboard
+               </Button>
+               <h1 className="text-3xl md:text-4xl font-bold text-gray-900">{lesson.title}</h1>
+               <p className="text-lg text-muted-foreground mt-1">
+                   {lesson.description}
+               </p>
+           </div>
+           <Badge variant="outline" className="text-sm py-1 px-3 h-fit w-fit bg-white shadow-sm">
+             📚 {lesson.contents?.length || 0} nội dung
+           </Badge>
+         </div>
+
+
+         {/* Instructions Banner */}
+         <Card className="p-4 bg-blue-50 border-blue-200 mb-8 flex items-start gap-3">
+           <PlayCircle className="w-6 h-6 text-blue-600 mt-0.5 shrink-0" />
+           <div>
+               <p className="text-sm font-medium text-blue-900">Hướng dẫn học tập</p>
+               <p className="text-sm text-blue-700">
+                   Click vào từng thẻ bên dưới để xem video/hình ảnh hướng dẫn chi tiết.
+                   Sử dụng các nút điều hướng để chuyển đổi qua lại giữa các nội dung.
+               </p>
+           </div>
+         </Card>
+
+
+         {/* Content Grid */}
+         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+           {lesson.contents?.map((item, index) => (
+             <Card
+               key={index}
+               className="group p-6 hover:shadow-xl transition-all duration-300 border-2 hover:border-blue-400 cursor-pointer bg-white relative overflow-hidden"
+               onClick={() => {
+                 setSelectedContent(item);
+                 setCurrentIndex(index);
+               }}
+             >
+               <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                   <PlayCircle className="w-6 h-6 text-blue-500" />
+               </div>
+               <div className="text-center mb-4 pt-2">
+                 <h3 className="text-4xl font-bold bg-gradient-to-br from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                   {item.label}
+                 </h3>
+               </div>
+               <p className="text-sm text-muted-foreground text-center line-clamp-2">
+                 {item.description}
+               </p>
+             </Card>
+           ))}
+         </div>
+
+
+         {/* Footer / Completion Area */}
+         <div className="flex justify-center pb-8">
+           <Card className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-green-100 max-w-2xl w-full">
+             <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+               <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                   <CheckCircle className="w-6 h-6 text-green-600" />
+                 </div>
+                 <div className="text-center sm:text-left">
+                   <h3 className="text-lg font-semibold text-green-900">Đã học xong?</h3>
+                   <p className="text-sm text-green-700">
+                     Xác nhận hoàn thành để lưu kết quả và nhận điểm thưởng
+                   </p>
+                 </div>
+               </div>
+
+
+               <Button
+                 size="lg"
+                 onClick={handleCompleteLesson}
+                 disabled={isSubmitting}
+                 className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-200"
+               >
+                 {isSubmitting ? (
+                   <>
+                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                       Đang lưu...
+                   </>
+                 ) : (
+                   <>
+                       <CheckCircle className="w-5 h-5 mr-2" />
+                       Hoàn thành bài học
+                   </>
+                 )}
+               </Button>
+             </div>
+           </Card>
+         </div>
+       </div>
+     </div>
+
+
+     {/* Modal View Content */}
+     {selectedContent && currentIndex !== null && (
+       <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+         <div className="bg-white rounded-2xl max-w-5xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+          
+           {/* Modal Header */}
+           <div className="flex items-center justify-between p-4 border-b bg-white shrink-0">
+             <div>
+               <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                   <span className="text-blue-600 text-2xl">#{currentIndex + 1}</span>
+                   {selectedContent.label}
+               </h2>
+               <p className="text-sm text-muted-foreground line-clamp-1">{selectedContent.description}</p>
+             </div>
+             <Button
+               variant="ghost"
+               size="icon"
+               onClick={() => setSelectedContent(null)}
+               className="rounded-full hover:bg-gray-100"
+             >
+               <X className="w-6 h-6 text-gray-500" />
+             </Button>
+           </div>
+
+
+           {/* Modal Body (Media) */}
+           <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden">
+               {/* Xử lý hiển thị Video hoặc Ảnh */}
+             {selectedContent.videoUrl?.match(/\.(jpeg|jpg|gif|png)$/i) ? (
+               <img
+                 src={selectedContent.videoUrl}
+                 alt={selectedContent.label}
+                 className="max-h-full max-w-full object-contain"
+               />
+             ) : (
+               <video
+                   key={selectedContent.videoUrl}
+                   src={selectedContent.videoUrl}
+                   controls
+                   autoPlay
+                   className="w-full h-full max-h-[70vh] object-contain"
+               />
+             )}
+           </div>
+
+
+           {/* Modal Footer (Navigation) */}
+           <div className="p-4 border-t bg-gray-50 flex items-center justify-between shrink-0">
+             <Button
+               variant="outline"
+               onClick={handlePrev}
+               className="w-32 hover:bg-white hover:border-blue-300 transition-all"
+             >
+               ⬅️ Trước
+             </Button>
+
+
+             <span className="text-sm font-medium text-gray-500 hidden sm:block">
+               Nội dung {currentIndex + 1} / {lesson.contents?.length || 0}
+             </span>
+
+
+             <Button
+               onClick={handleNext}
+               className="w-32 bg-blue-600 hover:bg-blue-700 text-white transition-all"
+             >
+               Tiếp ➡️
+             </Button>
+           </div>
+         </div>
+       </div>
+     )}
+   </div>
+ );
 }
 
+export interface LessonItem {
+ id: string;
+ title: string;
+ description: string;
+ videoUrl?: string;
+ thumbnailUrl: string;
+ duration: string;
+ isCompleted: boolean;
+ isLocked: boolean;
+ type: 'lesson' | 'practice';
+}
+
+
+export interface LessonGroup {
+ groupTitle: string;
+ lessons: LessonItem[];
+}
+
+
+// Mock data cho lessons theo từng cấp độ
+export const lessonsData = {
+ newbie: [
+   // Phần 1: A-H
+   {
+     groupTitle: "Phần 1: Chữ cái A-H",
+     lessons: [
+       {
+         id: "n1",
+         title: "Bài 1: Chữ cái A-H",
+         description: "Học ký hiệu của 8 chữ cái đầu tiên trong bảng chữ cái",
+         videoUrl: "https://www.youtube.com/watch?v=7QJ-N-AQJYc",
+         thumbnailUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaWduJTIwbGFuZ3VhZ2UlMjBhbHBoYWJldHxlbnwxfHx8fDE3NjAxMzMzODV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+         duration: "8:00",
+         isCompleted: true,
+         isLocked: false,
+         type: 'lesson' as const,
+       },
+       {
+         id: "p1",
+         title: "Luyện tập bảng chữ cái A-H",
+         description: "Kiểm tra kiến thức về chữ cái A-H",
+         thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+         duration: "3 phút",
+         isCompleted: true,
+         isLocked: false,
+         type: 'practice' as const,
+       },
+     ],
+   },
+  
+   // Phần 2: I-P
+   {
+     groupTitle: "Phần 2: Chữ cái I-P",
+     lessons: [
+       {
+         id: "n2",
+         title: "Bài 2: Chữ cái I-P",
+         description: "Tiếp tục học ký hiệu cho chữ cái I đến P",
+         videoUrl: "https://www.youtube.com/watch?v=7QJ-N-AQJYc",
+         thumbnailUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaWduJTIwbGFuZ3VhZ2UlMjBhbHBoYWJldHxlbnwxfHx8fDE3NjAxMzMzODV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+         duration: "8:00",
+         isCompleted: false,
+         isLocked: false,
+         type: 'lesson' as const,
+       },
+       {
+         id: "p2",
+         title: "Luyện tập bảng chữ cái I-P",
+         description: "Kiểm tra kiến thức về chữ cái I-P",
+         thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+         duration: "3 phút",
+         isCompleted: false,
+         isLocked: false,
+         type: 'practice' as const,
+       },
+     ],
+   },
+  
+   // Phần 3: Q-Z
+   {
+     groupTitle: "Phần 3: Chữ cái Q-Z",
+     lessons: [
+       {
+         id: "n3",
+         title: "Bài 3: Chữ cái Q-Z",
+         description: "Hoàn thành bảng chữ cái với các ký hiệu cuối cùng",
+         videoUrl: "https://www.youtube.com/watch?v=7QJ-N-AQJYc",
+         thumbnailUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaWduJTIwbGFuZ3VhZ2UlMjBhbHBoYWJldHxlbnwxfHx8fDE3NjAxMzMzODV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+         duration: "10:00",
+         isCompleted: false,
+         isLocked: true,
+         type: 'lesson' as const,
+       },
+       {
+         id: "p3",
+         title: "Luyện tập bảng chữ cái Q-Z",
+         description: "Kiểm tra kiến thức Q-Z",
+         thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+         duration: "3 phút",
+         isCompleted: false,
+         isLocked: true,
+         type: 'practice' as const,
+       },
+     ],
+   },
+  
+   // Phần 4: Số 0-9
+   {
+     groupTitle: "Phần 4: Số 0-9",
+     lessons: [
+       {
+         id: "n4",
+         title: "Bài 4: Số 0-9",
+         description: "Học ký hiệu cho các số từ 0 đến 9",
+         videoUrl: "https://www.youtube.com/watch?v=7QJ-N-AQJYc",
+         thumbnailUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaWduJTIwbGFuZ3VhZ2UlMjBhbHBoYWJldHxlbnwxfHx8fDE3NjAxMzMzODV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+         duration: "6:00",
+         isCompleted: false,
+         isLocked: true,
+         type: 'lesson' as const,
+       },
+       {
+         id: "p4",
+         title: "Luyện tập số 0-9",
+         description: "Thực hành ký hiệu các con số",
+         thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+         duration: "3 phút",
+         isCompleted: false,
+         isLocked: true,
+         type: 'practice' as const,
+       },
+     ],
+   },
+ ],
+  basic: [
+   {
+     groupTitle: "Từ vựng cơ bản",
+     lessons: [
+       {
+         id: "b1",
+         title: "Bài 1: Động vật",
+         description: "Học từ vựng về các loài động vật",
+         thumbnailUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaWduJTIwbGFuZ3VhZ2UlMjBhbHBoYWJldHxlbnwxfHx8fDE3NjAxMzMzODV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+         duration: "8:00",
+         isCompleted: true,
+         isLocked: false,
+         type: 'lesson' as const,
+       },
+     ],
+   },
+ ],
+  advanced: [
+   {
+     groupTitle: "Giao tiếp nâng cao",
+     lessons: [
+       {
+         id: "a1",
+         title: "Bài 1: Chào hỏi",
+         description: "Các câu chào hỏi và giới thiệu",
+         thumbnailUrl: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaWduJTIwbGFuZ3VhZ2UlMjBhbHBoYWJldHxlbnwxfHx8fDE3NjAxMzMzODV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+         duration: "10:00",
+         isCompleted: false,
+         isLocked: false,
+         type: 'lesson' as const,
+       },
+     ],
+   },
+ ],
+};
