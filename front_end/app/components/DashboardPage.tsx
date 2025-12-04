@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { DashboardHeader } from "./DashboardHeader";
 import { DashboardSidebar, StudyLevel, LessonType } from "./DashboardSidebar";
 import { DashboardContent } from "./DashboardContent";
@@ -10,7 +10,6 @@ import { Button } from "./ui/button";
 import { useRouter } from 'next/navigation'; 
 import axios from 'axios';
 import { lessonsData } from '@/app/data/lessonsData';
-import { Button } from "./ui/button";
 
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -66,101 +65,16 @@ const fetchUserProfile = async (token: string): Promise<User> => {
 
 
 export function DashboardPage({ onSignOut }: DashboardPageProps) {
- const router = useRouter();
- const [user, setUser] = useState<User | null>(null);
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
- const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<LessonType>("study");
   const [activeLevel, setActiveLevel] = useState<StudyLevel>("newbie");
-  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
 
   const currentLessons = lessonsData[activeLevel] || [];
-
-
- // Mapping slug
- const lessonSlugById: Record<string, string> = {
-   n1: 'n1-chu-cai-a-h', n2: 'n2-chu-cai-i-p', n3: 'n3-chu-cai-q-z', n4: 'n4-so-0-9',
-   b1: 'b1-dong-vat-animals', b2: 'b2-mau-sac-colors', b3: 'b3-gia-dinh-family', b4: 'b4-thuc-an-food',
-   a1: 'a1-chao-hoi-co-ban', a2: 'a2-hoi-dap-thong-tin', a3: 'a3-giao-tiep-hang-ngay',
- };
-
-
- const practiceSlugById: Record<string, string> = {
-   p1: 'p1-ghep-chu-cai-a-h', p2: 'p2-trac-nghiem-chu-cai-i-p',
-   p3: 'p3-dien-chu-vao-cau-q-z', p4: 'p4-luyen-tap-so-0-9',
- };
-
-
- //  Hàm Load Data (Stats + List đã học)
- const loadDashboardData = useCallback(async () => {
-   const token = localStorage.getItem('accessToken');
-   if (!token) return;
-
-
-   try {
-     const [statsRes, progressRes] = await Promise.all([
-       axios.get(`${BACKEND_URL}/progress/dashboard-stats`, {
-           headers: { Authorization: `Bearer ${token}` },
-       }),
-       axios.get(`${BACKEND_URL}/progress`, {
-           headers: { Authorization: `Bearer ${token}` },
-       })
-     ]);
-
-
-     // Cập nhật Stats
-     if (statsRes.data) {
-       setDashboardStats(statsRes.data);
-     }
-
-
-     // Cập nhật (Completed List)
-     if (progressRes.data) {
-       const completed = new Set<string>(
-         progressRes.data
-           .filter((p: any) => p.completed) // Lọc bài đã completed
-           .map((p: any) => {
-               return String(p.idLesson?.customId || p.idLesson?._id || p.idLesson || p.lessonId);
-           })
-       );
-       setCompletedLessons(completed);
-     }
-
-
-   } catch (err) {
-     console.error("[DashboardPage] Refresh data error:", err);
-   }
- }, []);
-
-
- // --- Xử lý chuyển trang ---
- const handlePlayLesson = (lesson: Lesson) => {
-   if (lesson.isLocked) return;
-  
-   // Luôn chuyển trang chi tiết, không mở Modal
-   if (lesson.type === 'practice') {
-     const slug = practiceSlugById[lesson.id] ?? lesson.id;
-     router.push(`/dashboard/practice/${slug}`);
-   } else {
-     const slug = lessonSlugById[lesson.id] ?? lesson.id;
-     router.push(`/dashboard/lesson/${slug}`);
-   }
- };
-
-
- const handleViewProfile = () => router.push("/profile");
- const handleSettings = () => router.push("/settings");
-  const handleSignOut = () => {
-    localStorage.removeItem('accessToken');
-    if (onSignOut) {
-      onSignOut();
-    }
-    router.push('/');
-  };
 
   // Mapping slug cố định cho lessons
   const lessonSlugById: Record<string, string> = {
@@ -198,13 +112,15 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
     }
   };
 
-  const handleCloseVideo = () => {
-    setSelectedLesson(null);
-  };
-
-  const handleCompleteLesson = () => {
-    alert("Bài học đã hoàn thành! Điểm số của bạn sẽ được cập nhật.");
-    setSelectedLesson(null);
+  const handleViewProfile = () => router.push("/profile");
+  const handleSettings = () => router.push("/settings");
+  
+  const handleSignOut = () => {
+    localStorage.removeItem('accessToken');
+    if (onSignOut) {
+      onSignOut();
+    }
+    router.push('/');
   };
 
   const handleToggleSidebar = () => {
@@ -213,7 +129,8 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
 
   const handleCloseSidebar = () => {
     setIsSidebarOpen(false);
-  }  
+  };
+  
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
     console.log('[DashboardPage] Checking auth, token:', token ? 'exists' : 'none');
@@ -230,17 +147,6 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
         const profileData = await fetchUserProfile(token);
         setUser(profileData);
         console.log('[DashboardPage] User profile loaded:', profileData.email);
-
-        console.log('[DashboardPage] Loading user stats...');
-        const statsResponse = await axios.get(`${BACKEND_URL}/users/me/stats`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (statsResponse.data) {
-          setUserStats(statsResponse.data);
-          console.log('[DashboardPage] Stats loaded');
-        }
 
         console.log('[DashboardPage] Loading progress...');
         const progressResponse = await axios.get(`${BACKEND_URL}/progress`, {
@@ -367,7 +273,6 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
             level={activeLevel}
             lessonGroups={updatedLessons}
             onPlayLesson={handlePlayLesson}
-            userStats={userStats || undefined}
           />
         ) : activeTab === "practice" ? (
           <PracticeMode />
@@ -375,15 +280,6 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
           <GameMode />
         )}
       </div>
-
-      {selectedLesson && selectedLesson.videoUrl && (
-        <VideoPlayer
-          videoUrl={selectedLesson.videoUrl}
-          title={selectedLesson.title}
-          onClose={handleCloseVideo}
-          onComplete={handleCompleteLesson}
-        />
-      )}
     </div>
   );
 }
