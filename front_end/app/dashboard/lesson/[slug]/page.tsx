@@ -135,29 +135,36 @@ export default function LessonPage() {
       });
       
       const userId = userResponse.data._id || userResponse.data.id;
-      const questionCount = lesson.letters?.length || 1;
+      
+      // Tính điểm cho lesson: mỗi content được xem = 10 điểm
+      const totalScore = (lesson.contents?.length || 1) * 10;
 
-      // Gọi API mark progress với customId trực tiếp
-      // Backend sẽ tự động xử lý việc tìm hoặc tạo lesson
+      console.log('[LessonPage] Marking progress:', {
+        idUser: userId,
+        idLesson: customId,
+        score: totalScore,
+        completed: true
+      });
+
+      // Gọi API mark progress với customId
       await axios.post(`${BACKEND_URL}/progress/mark`, {
         idUser: userId,
-        idLesson: lesson.id, // Dùng customId (n1, n2, etc.)
-        type: 'lesson',
+        idLesson: customId, // Dùng customId (n1, n2, etc.)
         completed: true,
-        questionCount: lesson.contents.length
+        score: totalScore
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      alert(`Chúc mừng! Bạn đã hoàn thành bài học và nhận được ${questionCount * 10} điểm!`);
+      alert(`Chúc mừng! Bạn đã hoàn thành bài học và nhận được ${totalScore} điểm!`);
       router.push('/dashboard');
     } catch (error) {
-      console.error('Error marking progress:', error);
+      console.error('[LessonPage] Error marking progress:', error);
       if (axios.isAxiosError(error)) {
-        console.error('Response:', error.response?.data);
-        console.error('Status:', error.response?.status);
+        console.error('[LessonPage] Response:', error.response?.data);
+        console.error('[LessonPage] Status:', error.response?.status);
       }
-      alert('Có lỗi xảy ra khi lưu tiến độ. Vui lòng kiểm tra console log và đảm bảo backend đang chạy.');
+      alert('Có lỗi xảy ra khi lưu tiến độ. Vui lòng thử lại.');
     }
   };
 
