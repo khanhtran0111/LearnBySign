@@ -35,8 +35,8 @@ export const lessonsData = {
         },
         {
           id: "p1",
-          title: "Ghép chữ cái A-H",
-          description: "Luyện tập ghép các chữ cái A-H với ký hiệu",
+          title: "Luyện tập bảng chữ cái A-H",
+          description: "Kiểm tra kiến thức về chữ cái A-H",
           thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080",
           duration: "3 phút",
           isCompleted: true,
@@ -63,7 +63,7 @@ export const lessonsData = {
         },
         {
           id: "p2",
-          title: "Trắc nghiệm I-P",
+          title: "Luyện tập bảng chữ cái I-P",
           description: "Kiểm tra kiến thức về chữ cái I-P",
           thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080",
           duration: "3 phút",
@@ -91,8 +91,8 @@ export const lessonsData = {
         },
         {
           id: "p3",
-          title: "Điền chữ Q-Z",
-          description: "Hoàn thành câu với chữ cái phù hợp",
+          title: "Luyện tập bảng chữ cái Q-Z",
+          description: "Kiểm tra kiến thức Q-Z",
           thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080",
           duration: "3 phút",
           isCompleted: false,

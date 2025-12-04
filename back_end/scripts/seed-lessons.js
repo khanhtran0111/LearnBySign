@@ -25,9 +25,9 @@ const lessonsData = [
   { customId: 'n4', title: 'Bài 4: Số 0-9', description: 'Học ký hiệu cho các số', difficulty: 'newbie', type: 'lesson', questionCount: 10, mediaUrl: '/videos/n4.mp4', folder: 'newbie' },
   
   // Newbie - Practices
-  { customId: 'p1', title: 'Ghép chữ cái A-H', description: 'Luyện tập ghép các chữ cái A-H', difficulty: 'newbie', type: 'practice', questionCount: 8, mediaUrl: '/practice/p1', folder: 'newbie' },
-  { customId: 'p2', title: 'Trắc nghiệm chữ cái I-P', description: 'Kiểm tra kiến thức về chữ cái I-P', difficulty: 'newbie', type: 'practice', questionCount: 8, mediaUrl: '/practice/p2', folder: 'newbie' },
-  { customId: 'p3', title: 'Điền chữ vào câu Q-Z', description: 'Hoàn thành câu với chữ cái phù hợp', difficulty: 'newbie', type: 'practice', questionCount: 10, mediaUrl: '/practice/p3', folder: 'newbie' },
+  { customId: 'p1', title: 'Luyện tập bảng chữ cái', description: 'Luyện tập các chữ cái A-H', difficulty: 'newbie', type: 'practice', questionCount: 8, mediaUrl: '/practice/p1', folder: 'newbie' },
+  { customId: 'p2', title: 'Luyện tập bảng chữ cái', description: 'Luyện tập các chữ cái I-P', difficulty: 'newbie', type: 'practice', questionCount: 8, mediaUrl: '/practice/p2', folder: 'newbie' },
+  { customId: 'p3', title: 'Luyện tập bảng chữ cái', description: 'Luyện tập các chữ cái Q-Z', difficulty: 'newbie', type: 'practice', questionCount: 10, mediaUrl: '/practice/p3', folder: 'newbie' },
   { customId: 'p4', title: 'Luyện tập số 0-9', description: 'Thực hành ký hiệu các con số', difficulty: 'newbie', type: 'practice', questionCount: 10, mediaUrl: '/practice/p4', folder: 'newbie' },
   
   // Basic - Lessons

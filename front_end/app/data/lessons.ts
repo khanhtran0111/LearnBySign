@@ -24,7 +24,7 @@ export const lessonsData: Record<string, LessonData[]> = {
     },
     {
       id: "p1",
-      title: "Ghép chữ cái A-H",
+      title: "Luyện tập bảng chữ cái",
       description: "Luyện tập ghép các chữ cái vừa học với ký hiệu",
       videoUrl: "https://example.com/practice1",
       thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
@@ -46,7 +46,7 @@ export const lessonsData: Record<string, LessonData[]> = {
     },
     {
       id: "p2",
-      title: "Trắc nghiệm chữ cái I-P",
+      title: "Luyện tập bảng chữ cái",
       description: "Kiểm tra kiến thức về chữ cái I-P",
       videoUrl: "https://example.com/practice2",
       thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
@@ -68,7 +68,7 @@ export const lessonsData: Record<string, LessonData[]> = {
     },
     {
       id: "p3",
-      title: "Điền chữ vào câu Q-Z",
+      title: "Luyện tập bảng chữ cái",
       description: "Hoàn thành câu với chữ cái phù hợp",
       videoUrl: "https://example.com/practice3",
       thumbnailUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw1fHxwcmFjdGljZSUyMHF1aXp8ZW58MXx8fHwxNzYwMTMzMzg1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
