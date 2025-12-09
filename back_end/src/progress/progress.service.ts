@@ -196,4 +196,84 @@ export class ProgressService {
             throw error;
         }
     }
+
+    /**
+     * Lấy thống kê Dashboard cho user
+     */
+    async getDashboardStats(userId: string): Promise<{
+        streak: number;
+        totalScore: number;
+        totalCompleted: number;
+        overallProgress: number;
+        levels: {
+            newbie: { completed: number; total: number; percent: number };
+            basic: { completed: number; total: number; percent: number };
+            advanced: { completed: number; total: number; percent: number };
+        };
+    }> {
+        // 1. Lấy thông tin user (streak)
+        const user = await this.userModel.findById(userId).exec();
+        const streak = user?.currentStreak || 0;
+
+        // 2. Lấy tất cả progress của user (completed = true)
+        const userProgress = await this.progressModel
+            .find({ idUser: userId, completed: true })
+            .exec();
+
+        // 3. Tính tổng điểm và số bài đã hoàn thành
+        const totalScore = userProgress.reduce((sum, p) => sum + (p.score || 0), 0);
+        const totalCompleted = userProgress.length;
+
+        // 4. Lấy danh sách lessonId đã hoàn thành
+        const completedLessonIds = userProgress.map((p) => p.idLesson.toString());
+
+        // 5. Đếm số bài theo từng difficulty
+        const lessonCounts = await this.lessonModel.aggregate([
+            {
+                $group: {
+                    _id: '$difficulty',
+                    total: { $sum: 1 },
+                    lessonIds: { $push: { $toString: '$_id' } },
+                },
+            },
+        ]);
+
+        // 6. Tính stats cho từng level
+        const levels = {
+            newbie: { completed: 0, total: 0, percent: 0 },
+            basic: { completed: 0, total: 0, percent: 0 },
+            advanced: { completed: 0, total: 0, percent: 0 },
+        };
+
+        let totalLessons = 0;
+
+        for (const item of lessonCounts) {
+            const difficulty = item._id as 'newbie' | 'basic' | 'advanced';
+            if (levels[difficulty]) {
+                levels[difficulty].total = item.total;
+                totalLessons += item.total;
+
+                // Đếm số bài đã hoàn thành trong level này
+                const completedInLevel = item.lessonIds.filter((id: string) =>
+                    completedLessonIds.includes(id),
+                ).length;
+
+                levels[difficulty].completed = completedInLevel;
+                levels[difficulty].percent =
+                    item.total > 0 ? Math.round((completedInLevel / item.total) * 100) : 0;
+            }
+        }
+
+        // 7. Tính overall progress
+        const overallProgress =
+            totalLessons > 0 ? Math.round((totalCompleted / totalLessons) * 100) : 0;
+
+        return {
+            streak,
+            totalScore,
+            totalCompleted,
+            overallProgress,
+            levels,
+        };
+    }
 }
