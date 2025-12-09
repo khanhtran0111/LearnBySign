@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
+import { toVietnamese } from "@/app/utils/vietnameseMapping";
 import { ArrowLeft, PlayCircle, X, CheckCircle, Loader2 } from "lucide-react";
 import { DashboardHeader } from "@/app/components/DashboardHeader";
 import { Card } from "@/app/components/ui/card";
@@ -92,7 +93,14 @@ export default function LessonPage() {
 }, [slug]);
 
   const handleClose = () => {
-    router.push('/dashboard');
+    // Xác định level từ customId
+    let level = 'newbie';
+    if (customId.startsWith('b') || customId === 'p5' || customId === 'p6' || customId === 'p7' || customId === 'p9') {
+      level = 'basic';
+    } else if (customId.startsWith('a') || customId === 'p8') {
+      level = 'advanced';
+    }
+    router.push(`/dashboard/${level}`);
   };
 
   const handleNext = () => {
@@ -158,8 +166,14 @@ export default function LessonPage() {
 
       alert(`Chúc mừng! Bạn đã hoàn thành bài học và nhận được ${totalScore} điểm!`);
       
-      // Thêm timestamp để force refresh dashboard
-      router.push('/dashboard?refresh=' + Date.now());
+      // Xác định level và redirect về đúng route
+      let level = 'newbie';
+      if (customId.startsWith('b') || customId === 'p5' || customId === 'p6' || customId === 'p7' || customId === 'p9') {
+        level = 'basic';
+      } else if (customId.startsWith('a') || customId === 'p8') {
+        level = 'advanced';
+      }
+      router.push(`/dashboard/${level}?refresh=` + Date.now());
     } catch (error) {
       console.error('[LessonPage] Error marking progress:', error);
       if (axios.isAxiosError(error)) {
@@ -244,11 +258,13 @@ export default function LessonPage() {
               >
                 <div className="text-center mb-4">
                   <h3 className="text-3xl font-bold text-blue-600 mb-2">
-                    {item.label}
+                    {toVietnamese(item.label)}
                   </h3>
                 </div>
                 <p className="text-sm text-muted-foreground text-center">
-                  {item.description}
+                  {customId.startsWith('n') || customId.startsWith('p1') || customId.startsWith('p2') || customId.startsWith('p3') || customId.startsWith('p4') 
+                    ? item.description 
+                    : toVietnamese(item.label)}
                 </p>
               </Card>
             ))}
@@ -308,10 +324,14 @@ export default function LessonPage() {
                   src={selectedLetter.videoUrl}
                   alt={selectedLetter.label}
                   className="max-h-full max-w-full object-contain"
-                  crossOrigin="anonymous"
                   onError={(e) => {
                     console.error('[LessonPage] Failed to load image:', selectedLetter.videoUrl);
-                    e.currentTarget.src = '/placeholder.png';
+                    // Fallback: hiển thị text thay vì placeholder
+                    e.currentTarget.style.display = 'none';
+                    const fallback = document.createElement('div');
+                    fallback.className = 'text-white text-center p-8';
+                    fallback.innerHTML = `<p class="text-2xl mb-2">${selectedLetter.label}</p><p class="text-sm opacity-70">Không thể tải hình ảnh</p>`;
+                    e.currentTarget.parentElement?.appendChild(fallback);
                   }}
                 />
               ) : selectedLetter.videoUrl?.endsWith(".mp4") ? (
@@ -319,12 +339,14 @@ export default function LessonPage() {
                   src={selectedLetter.videoUrl}
                   controls
                   className="w-full h-full object-contain"
-                  crossOrigin="anonymous"
                   onError={(e) => {
                     console.error('[LessonPage] Failed to load video:', selectedLetter.videoUrl);
                   }}
                 >
-                  Trình duyệt không hỗ trợ video này.
+                  <div className="text-white text-center p-8">
+                    <p className="text-2xl mb-2">{selectedLetter.label}</p>
+                    <p className="text-sm opacity-70">Trình duyệt không hỗ trợ video này</p>
+                  </div>
                 </video>
               ) : (
                 <iframe

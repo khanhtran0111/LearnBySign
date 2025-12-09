@@ -46,6 +46,7 @@ export interface DashboardStats {
 
 interface DashboardPageProps {
  onSignOut?: () => void;
+ defaultLevel?: StudyLevel;
 }
 
 
@@ -108,7 +109,7 @@ const calculateDashboardStats = (completedLessons: Set<string>): DashboardStats 
 };
 
 
-export function DashboardPage({ onSignOut }: DashboardPageProps) {
+export function DashboardPage({ onSignOut, defaultLevel }: DashboardPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
@@ -116,7 +117,7 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<LessonType>("study");
-  const [activeLevel, setActiveLevel] = useState<StudyLevel>("newbie");
+  const [activeLevel, setActiveLevel] = useState<StudyLevel>(defaultLevel || "newbie");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
 
@@ -128,21 +129,26 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
     n2: 'n2-chu-cai-i-p',
     n3: 'n3-chu-cai-q-z',
     n4: 'n4-so-0-9',
-    b1: 'b1-dong-vat-animals',
-    b2: 'b2-mau-sac-colors',
-    b3: 'b3-gia-dinh-family',
-    b4: 'b4-thuc-an-food',
-    a1: 'a1-chao-hoi-co-ban',
-    a2: 'a2-hoi-dap-thong-tin',
-    a3: 'a3-giao-tiep-hang-ngay',
+    b1: 'b1-nguoi-than-gia-dinh',
+    b2: 'b2-am-thuc',
+    b3: 'b3-cac-quoc-gia',
+    b4: 'b4-dong-vat',
+    b5: 'b5-phuong-tien',
+    b6: 'b6-hanh-dong',
+    b7: 'b7-cac-tu-khac',
+    a1: 'a1-cau-noi-co-ban-nang-cao',
   };
 
-  // Mapping slug cố định cho practices
   const practiceSlugById: Record<string, string> = {
     p1: 'p1-ghep-chu-cai-a-h',
     p2: 'p2-trac-nghiem-chu-cai-i-p',
     p3: 'p3-dien-chu-vao-cau-q-z',
     p4: 'p4-luyen-tap-so-0-9',
+    p5: 'p5-gia-dinh-am-thuc',
+    p6: 'p6-quoc-gia-dong-vat',
+    p7: 'p7-phuong-tien-hanh-dong',
+    p8: 'p8-giao-tiep-nang-cao',
+    p9: 'p9-cac-tu-khac',
   };
 
   const handlePlayLesson = (lesson: Lesson) => {
@@ -175,6 +181,11 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
 
   const handleCloseSidebar = () => {
     setIsSidebarOpen(false);
+  };
+
+  const handleLevelChange = (level: StudyLevel) => {
+    setActiveLevel(level);
+    router.push(`/dashboard/${level}`);
   };
   
   useEffect(() => {
@@ -331,7 +342,7 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
           activeTab={activeTab}
           activeLevel={activeLevel}
           onTabChange={setActiveTab}
-          onLevelChange={setActiveLevel}
+          onLevelChange={handleLevelChange}
           isOpen={isSidebarOpen}
           onClose={handleCloseSidebar}
           levelStats={dashboardStats?.levels}
