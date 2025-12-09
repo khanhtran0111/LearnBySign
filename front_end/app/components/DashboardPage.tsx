@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from 'next/navigation'; 
+import axios from 'axios';
 import { DashboardHeader } from "./DashboardHeader";
 import { DashboardSidebar, StudyLevel, LessonType } from "./DashboardSidebar";
 import { DashboardContent } from "./DashboardContent";
@@ -7,8 +9,6 @@ import { PracticeMode } from "./PracticeMode";
 import { GameMode } from "./GameMode";
 import { Lesson } from "./LessonCard";
 import { Button } from "./ui/button";
-import { useRouter } from 'next/navigation'; 
-import axios from 'axios';
 import { lessonsData } from '@/app/data/lessonsData';
 
 
@@ -63,9 +63,54 @@ const fetchUserProfile = async (token: string): Promise<User> => {
    }
 };
 
+// Function tính toán stats từ completed lessons
+const calculateDashboardStats = (completedLessons: Set<string>): DashboardStats => {
+  // Đếm số lesson đã hoàn thành theo từng level (chỉ lesson, không tính practice)
+  const newbieLessons = lessonsData.newbie.flatMap(g => g.lessons.filter(l => l.type === 'lesson'));
+  const basicLessons = lessonsData.basic.flatMap(g => g.lessons.filter(l => l.type === 'lesson'));
+  const advancedLessons = lessonsData.advanced.flatMap(g => g.lessons.filter(l => l.type === 'lesson'));
+
+  const newbieCompleted = newbieLessons.filter(l => completedLessons.has(l.id)).length;
+  const basicCompleted = basicLessons.filter(l => completedLessons.has(l.id)).length;
+  const advancedCompleted = advancedLessons.filter(l => completedLessons.has(l.id)).length;
+
+  const newbieTotal = newbieLessons.length;
+  const basicTotal = basicLessons.length;
+  const advancedTotal = advancedLessons.length;
+
+  const totalCompleted = newbieCompleted + basicCompleted + advancedCompleted;
+  const totalLessons = newbieTotal + basicTotal + advancedTotal;
+  const overallProgress = totalLessons > 0 ? Math.round((totalCompleted / totalLessons) * 100) : 0;
+
+  return {
+    streak: 0, // TODO: Tính streak từ API nếu có
+    totalScore: totalCompleted * 10, // Mỗi bài = 10 điểm
+    totalCompleted,
+    overallProgress,
+    levels: {
+      newbie: {
+        completed: newbieCompleted,
+        total: newbieTotal,
+        percent: newbieTotal > 0 ? Math.round((newbieCompleted / newbieTotal) * 100) : 0,
+      },
+      basic: {
+        completed: basicCompleted,
+        total: basicTotal,
+        percent: basicTotal > 0 ? Math.round((basicCompleted / basicTotal) * 100) : 0,
+      },
+      advanced: {
+        completed: advancedCompleted,
+        total: advancedTotal,
+        percent: advancedTotal > 0 ? Math.round((advancedCompleted / advancedTotal) * 100) : 0,
+      },
+    },
+  };
+};
+
 
 export function DashboardPage({ onSignOut }: DashboardPageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
@@ -73,6 +118,7 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
   const [activeTab, setActiveTab] = useState<LessonType>("study");
   const [activeLevel, setActiveLevel] = useState<StudyLevel>("newbie");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
 
   const currentLessons = lessonsData[activeLevel] || [];
 
@@ -162,6 +208,11 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
           );
           setCompletedLessons(completed);
           console.log('[DashboardPage] Progress loaded, completed lessons:', completed.size);
+
+          // Tính toán stats từ progress data
+          const stats = calculateDashboardStats(completed);
+          setDashboardStats(stats);
+          console.log('[DashboardPage] Stats calculated:', stats);
         }
         
         console.log('[DashboardPage] All data loaded successfully');
@@ -195,7 +246,7 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
     };
 
     loadProfile();
-  }, [router]);
+  }, [router, searchParams]); // Thêm searchParams để reload khi có query param thay đổi
   
   if (isLoading) {
     return (
@@ -242,10 +293,26 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
 
   const updatedLessons = currentLessons.map(group => ({
     ...group,
-    lessons: group.lessons.map(lesson => ({
-      ...lesson,
-      isCompleted: completedLessons.has(lesson.id)
-    }))
+    lessons: group.lessons.map((lesson, index, array) => {
+      const isCompleted = completedLessons.has(lesson.id);
+      
+      // Logic unlock: Bài đầu tiên luôn unlock
+      // Các bài tiếp theo chỉ unlock nếu bài trước đã hoàn thành
+      let isLocked = lesson.isLocked;
+      if (index === 0) {
+        isLocked = false; // Bài đầu luôn unlock
+      } else {
+        const previousLesson = array[index - 1];
+        // Unlock nếu bài trước đã hoàn thành
+        isLocked = !completedLessons.has(previousLesson.id);
+      }
+
+      return {
+        ...lesson,
+        isCompleted,
+        isLocked,
+      };
+    })
   }));
 
   return (
@@ -267,12 +334,14 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
           onLevelChange={setActiveLevel}
           isOpen={isSidebarOpen}
           onClose={handleCloseSidebar}
+          levelStats={dashboardStats?.levels}
         />
         {activeTab === "study" ? (
           <DashboardContent
             level={activeLevel}
             lessonGroups={updatedLessons}
             onPlayLesson={handlePlayLesson}
+            stats={dashboardStats ?? undefined}
           />
         ) : activeTab === "practice" ? (
           <PracticeMode />

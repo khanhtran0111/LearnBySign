@@ -157,7 +157,9 @@ export default function LessonPage() {
       });
 
       alert(`Chúc mừng! Bạn đã hoàn thành bài học và nhận được ${totalScore} điểm!`);
-      router.push('/dashboard');
+      
+      // Thêm timestamp để force refresh dashboard
+      router.push('/dashboard?refresh=' + Date.now());
     } catch (error) {
       console.error('[LessonPage] Error marking progress:', error);
       if (axios.isAxiosError(error)) {
@@ -303,22 +305,34 @@ export default function LessonPage() {
             <div className="aspect-video bg-black flex items-center justify-center">
               {selectedLetter.videoUrl?.endsWith(".gif") ? (
                 <img
-                  src={`${selectedLetter.videoUrl}?t=${Date.now()}`}
+                  src={selectedLetter.videoUrl}
                   alt={selectedLetter.label}
                   className="max-h-full max-w-full object-contain"
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    console.error('[LessonPage] Failed to load image:', selectedLetter.videoUrl);
+                    e.currentTarget.src = '/placeholder.png';
+                  }}
                 />
               ) : selectedLetter.videoUrl?.endsWith(".mp4") ? (
                 <video
                   src={selectedLetter.videoUrl}
                   controls
                   className="w-full h-full object-contain"
-                />
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    console.error('[LessonPage] Failed to load video:', selectedLetter.videoUrl);
+                  }}
+                >
+                  Trình duyệt không hỗ trợ video này.
+                </video>
               ) : (
                 <iframe
                   width="100%"
                   height="100%"
                   src={selectedLetter.videoUrl}
                   allowFullScreen
+                  title={selectedLetter.label}
                 />
               )}
             </div>
