@@ -153,29 +153,53 @@ export class LessonsService {
         }
     }
 
+    /**
+     * Mapping tên file Telex -> Ký tự tiếng Việt có dấu
+     */
+    private readonly VIETNAMESE_LABEL_MAPPING: Record<string, string> = {
+        aw: 'Ă',
+        aa: 'Â',
+        dd: 'Đ',
+        ee: 'Ê',
+        oo: 'Ô',
+        ow: 'Ơ',
+        uw: 'Ư',
+    };
+
     private createContentFromFile(file: { name: string; publicUrl: string }): {
         label: string;
         description: string;
         videoUrl: string;
         thumbnailUrl?: string;
     } {
-        let label = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
+        // Bước 1: Lấy tên file raw (bỏ đuôi .gif, .mp4...)
+        const rawName = file.name.replace(/\.[^/.]+$/, '').toLowerCase();
 
-        const numMatch = label.match(/^(\d+)_/);
-        if (numMatch) {
-            label = numMatch[1];
+        // Bước 2: Kiểm tra xem tên file có trong mapping Telex không
+        let label: string;
+        if (this.VIETNAMESE_LABEL_MAPPING[rawName]) {
+            // Trường hợp CÓ: Gán label bằng ký tự tiếng Việt tương ứng
+            label = this.VIETNAMESE_LABEL_MAPPING[rawName];
         } else {
-            if (label.length === 1) {
-                label = label.toUpperCase();
+            // Trường hợp KHÔNG: Giữ nguyên logic cũ
+            const numMatch = rawName.match(/^(\d+)_/);
+            if (numMatch) {
+                label = numMatch[1];
+            } else if (rawName.length === 1) {
+                label = rawName.toUpperCase();
+            } else if (/^\d+$/.test(rawName)) {
+                // Số thuần (0, 1, 2...)
+                label = rawName;
             } else {
-                label = label.replace(/_/g, ' ');
+                // Tên dài: replace underscore và capitalize
+                label = rawName.replace(/_/g, ' ');
                 label = label.charAt(0).toUpperCase() + label.slice(1);
             }
         }
 
         return {
             label,
-            description: `Mô tả cho ${label}`, // Sau này có thể sửa DB để update mô tả thật
+            description: `Mô tả cho ${label}`,
             videoUrl: file.publicUrl,
             thumbnailUrl: undefined,
         };
