@@ -5,8 +5,9 @@ Exposes REST API for sign language prediction
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import List, Dict
+from typing import List, Dict, Optional
 import vsl_inference
+import vsl_sequence_inference
 
 app = FastAPI(
     title="VSL Inference API",
@@ -125,6 +126,94 @@ async def predict_from_landmarks(request: PredictFromLandmarksRequest):
 async def predict(request: PredictFromLandmarksRequest):
     """Alias for /predict/landmarks"""
     return await predict_from_landmarks(request)
+
+
+# ===== NEW: Sequence Model Endpoints (60 frames LSTM) =====
+
+class HandLandmarks(BaseModel):
+    landmarks: Optional[List[LandmarkPoint]] = None
+
+
+class SequenceFrameRequest(BaseModel):
+    left_hand: Optional[List[LandmarkPoint]] = None
+    right_hand: Optional[List[LandmarkPoint]] = None
+
+
+class SequencePredictRequest(BaseModel):
+    frames: List[SequenceFrameRequest] = Field(..., min_length=60, max_length=60)
+
+
+class SequencePredictionResponse(BaseModel):
+    label: str
+    confidence: float
+    class_index: int
+    raw_proba: List[float]
+    success: bool
+
+
+class SequenceInfoResponse(BaseModel):
+    sequence_length: int
+    features_per_frame: int
+    available_actions: List[str]
+    confidence_threshold: float
+
+
+@app.get("/sequence/info", response_model=SequenceInfoResponse)
+async def get_sequence_info():
+    """Get information about the sequence model requirements"""
+    return SequenceInfoResponse(
+        sequence_length=vsl_sequence_inference.get_sequence_length(),
+        features_per_frame=vsl_sequence_inference.get_features_per_frame(),
+        available_actions=vsl_sequence_inference.get_available_actions(),
+        confidence_threshold=vsl_sequence_inference.CONF_THRESHOLD
+    )
+
+
+@app.post("/sequence/predict", response_model=SequencePredictionResponse)
+async def predict_from_sequence(request: SequencePredictRequest):
+    """
+    Predict from a sequence of 60 frames.
+    Each frame contains left_hand and right_hand landmarks (21 points each).
+    """
+    try:
+        # Convert frames to feature vectors
+        frames_features = []
+        for frame in request.frames:
+            left_hand = [lm.model_dump() for lm in frame.left_hand] if frame.left_hand else []
+            right_hand = [lm.model_dump() for lm in frame.right_hand] if frame.right_hand else []
+            
+            keypoints = vsl_sequence_inference.extract_keypoints_from_landmarks(left_hand, right_hand)
+            frames_features.append(keypoints.tolist())
+        
+        # Predict
+        result = vsl_sequence_inference.predict_from_sequence(frames_features)
+        
+        print(f"[SEQUENCE] Predicted: {result['label']} (confidence: {result['confidence']:.2%}, success: {result['success']})")
+        
+        return SequencePredictionResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Sequence prediction failed: {str(e)}")
+
+
+class RawSequenceRequest(BaseModel):
+    frames: List[List[float]] = Field(..., min_length=60, max_length=60)
+
+
+@app.post("/sequence/predict-raw", response_model=SequencePredictionResponse)
+async def predict_from_raw_sequence(request: RawSequenceRequest):
+    """
+    Predict from raw feature vectors (60 frames, each 126 floats).
+    This is more efficient if client already computed features.
+    """
+    try:
+        result = vsl_sequence_inference.predict_from_sequence(request.frames)
+        return SequencePredictionResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Sequence prediction failed: {str(e)}")
 
 
 if __name__ == "__main__":
