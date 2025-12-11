@@ -66,6 +66,43 @@ export class LessonsController {
         return this.lessonsService.syncLessonContents();
     }
 
+    @Get('with-progress/:userId')
+    @ApiOperation({ 
+        summary: 'Lấy danh sách bài học kèm trạng thái locked dựa trên tiến độ user',
+        description: 'Logic unlock: Newbie tuần tự, Basic cần hoàn thành Newbie, Advanced cần hoàn thành Basic'
+    })
+    @ApiParam({ name: 'userId', description: 'ID của user' })
+    @ApiQuery({
+        name: 'difficulty',
+        required: false,
+        enum: ['newbie', 'basic', 'advanced'],
+        description: 'Lọc theo độ khó',
+    })
+    @ApiResponse({ 
+        status: 200, 
+        description: 'Danh sách bài học với isLocked và isCompleted',
+        schema: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    _id: { type: 'string' },
+                    title: { type: 'string' },
+                    customId: { type: 'string' },
+                    difficulty: { type: 'string' },
+                    isLocked: { type: 'boolean', description: 'True nếu chưa đủ điều kiện unlock' },
+                    isCompleted: { type: 'boolean', description: 'True nếu đã hoàn thành' },
+                }
+            }
+        }
+    })
+    getLessonsWithProgress(
+        @Param('userId') userId: string,
+        @Query('difficulty') difficulty?: string
+    ) {
+        return this.lessonsService.getLessonsWithProgress(userId, difficulty);
+    }
+
     @Get()
     @ApiOperation({ summary: 'Lấy danh sách tất cả bài học' })
     @ApiQuery({

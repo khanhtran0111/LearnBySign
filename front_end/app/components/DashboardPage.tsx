@@ -113,7 +113,9 @@ export function DashboardPage({ onSignOut, defaultLevel }: DashboardPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
+  const [lessonsFromAPI, setLessonsFromAPI] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<LessonType>("study");
@@ -152,7 +154,17 @@ export function DashboardPage({ onSignOut, defaultLevel }: DashboardPageProps) {
   };
 
   const handlePlayLesson = (lesson: Lesson) => {
-    if (lesson.isLocked) return;
+    if (lesson.isLocked) {
+      // Hiển thị thông báo chi tiết hơn
+      const message = activeLevel === 'basic' 
+        ? '🔒 Bài học này chưa mở khóa!\n\nĐể học Basic, bạn cần hoàn thành TẤT CẢ các bài Newbie (n1-n4) trước.'
+        : activeLevel === 'advanced'
+        ? '🔒 Bài học này chưa mở khóa!\n\nĐể học Advanced, bạn cần hoàn thành TẤT CẢ các bài Basic (b1-b7) trước.'
+        : '🔒 Bài học này chưa mở khóa!\n\nVui lòng hoàn thành bài học trước đó.';
+      
+      alert(message);
+      return;
+    }
     
     // Xác định slug dựa trên type
     if (lesson.type === 'practice') {
@@ -201,9 +213,16 @@ export function DashboardPage({ onSignOut, defaultLevel }: DashboardPageProps) {
     const loadProfile = async () => {
       try {
         console.log('[DashboardPage] Loading user profile...');
-        const profileData = await fetchUserProfile(token);
+        const profileResponse = await axios.get(`${BACKEND_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const profileData = profileResponse.data;
         setUser(profileData);
-        console.log('[DashboardPage] User profile loaded:', profileData.email);
+        
+        // Lấy userId từ profile response
+        const userIdFromProfile = profileResponse.data._id || profileResponse.data.id;
+        setUserId(userIdFromProfile);
+        console.log('[DashboardPage] User profile loaded:', profileData.email, 'userId:', userIdFromProfile);
 
         console.log('[DashboardPage] Loading progress...');
         const progressResponse = await axios.get(`${BACKEND_URL}/progress`, {
@@ -225,6 +244,16 @@ export function DashboardPage({ onSignOut, defaultLevel }: DashboardPageProps) {
           setDashboardStats(stats);
           console.log('[DashboardPage] Stats calculated:', stats);
         }
+
+        // Gọi API mới để lấy lessons kèm trạng thái locked
+        console.log('[DashboardPage] Loading lessons with lock status...');
+        const lessonsResponse = await axios.get(`${BACKEND_URL}/lessons/with-progress/${userIdFromProfile}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setLessonsFromAPI(lessonsResponse.data || []);
+        console.log('[DashboardPage] Lessons with lock status loaded:', lessonsResponse.data?.length);
         
         console.log('[DashboardPage] All data loaded successfully');
         setIsLoading(false);
@@ -304,19 +333,14 @@ export function DashboardPage({ onSignOut, defaultLevel }: DashboardPageProps) {
 
   const updatedLessons = currentLessons.map(group => ({
     ...group,
-    lessons: group.lessons.map((lesson, index, array) => {
-      const isCompleted = completedLessons.has(lesson.id);
+    lessons: group.lessons.map((lesson) => {
+      // Tìm lesson tương ứng từ API response
+      const apiLesson = lessonsFromAPI.find(l => l.customId === lesson.id);
       
-      // Logic unlock: Bài đầu tiên luôn unlock
-      // Các bài tiếp theo chỉ unlock nếu bài trước đã hoàn thành
-      let isLocked = lesson.isLocked;
-      if (index === 0) {
-        isLocked = false; // Bài đầu luôn unlock
-      } else {
-        const previousLesson = array[index - 1];
-        // Unlock nếu bài trước đã hoàn thành
-        isLocked = !completedLessons.has(previousLesson.id);
-      }
+      // Nếu có từ API, dùng isLocked và isCompleted từ API
+      // Nếu không, giữ nguyên logic cũ
+      const isCompleted = apiLesson ? apiLesson.isCompleted : completedLessons.has(lesson.id);
+      const isLocked = apiLesson ? apiLesson.isLocked : lesson.isLocked;
 
       return {
         ...lesson,

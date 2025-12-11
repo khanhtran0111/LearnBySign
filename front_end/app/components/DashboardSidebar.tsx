@@ -1,9 +1,10 @@
-import { BookOpen, Gamepad2, Star, Award, CircleDot, X, Trophy } from "lucide-react";
+import { BookOpen, Gamepad2, Star, Award, CircleDot, X, Trophy, Target, Lock } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
 import { cn } from "./ui/utils";
 import { Button } from "./ui/button";
 import { LevelStats } from "./DashboardPage";
+import { useRouter } from "next/navigation";
 
 
 export type StudyLevel = "newbie" | "basic" | "advanced";
@@ -34,6 +35,8 @@ export function DashboardSidebar({
  onClose,
  levelStats,
 }: DashboardSidebarProps) {
+  const router = useRouter();
+  
   const studyLevelsConfig = [
    {
      id: "newbie" as StudyLevel,
@@ -99,25 +102,15 @@ export function DashboardSidebar({
                    <span className="text-xs">Học tập</span>
                </button>
                <button
-                   onClick={() => onTabChange("practice")}
-                   className={cn(
-                   "flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors",
-                   activeTab === "practice"
-                       ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white"
-                       : "bg-gray-100 hover:bg-gray-200"
-                   )}
+                   onClick={() => router.push('/dashboard/practice-test')}
+                   className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors bg-gray-100 hover:bg-gray-200"
                >
-                   <Gamepad2 className="w-5 h-5" />
+                   <Target className="w-5 h-5" />
                    <span className="text-xs">Luyện tập</span>
                </button>
                <button
-                   onClick={() => onTabChange("game")}
-                   className={cn(
-                   "flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors",
-                   activeTab === "game"
-                       ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white"
-                       : "bg-gray-100 hover:bg-gray-200"
-                   )}
+                   onClick={() => router.push('/dashboard/game')}
+                   className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors bg-gray-100 hover:bg-gray-200"
                >
                    <Trophy className="w-5 h-5" />
                    <span className="text-xs">Game</span>
@@ -136,27 +129,62 @@ export function DashboardSidebar({
                    // Lấy dữ liệu từ props levelStats
                    const stats = levelStats ? levelStats[levelConfig.id] : { completed: 0, total: 0, percent: 0 };
                   
+                   // Logic unlock cho level
+                   let isLevelLocked = false;
+                   let lockMessage = '';
+                   
+                   if (levelConfig.id === 'basic' && levelStats) {
+                     // Basic cần hoàn thành TẤT CẢ Newbie
+                     const newbieStats = levelStats.newbie;
+                     isLevelLocked = newbieStats.completed < newbieStats.total;
+                     lockMessage = `Hoàn thành ${newbieStats.total - newbieStats.completed} bài Newbie còn lại để mở khóa`;
+                   } else if (levelConfig.id === 'advanced' && levelStats) {
+                     // Advanced cần hoàn thành TẤT CẢ Basic
+                     const basicStats = levelStats.basic;
+                     isLevelLocked = basicStats.completed < basicStats.total;
+                     lockMessage = `Hoàn thành ${basicStats.total - basicStats.completed} bài Basic còn lại để mở khóa`;
+                   }
+                  
                    return (
                    <button
                        key={levelConfig.id}
-                       onClick={() => onLevelChange(levelConfig.id)}
+                       onClick={() => {
+                         if (isLevelLocked) {
+                           alert(`🔒 Level ${levelConfig.name} chưa mở khóa!\n\n${lockMessage}`);
+                         } else {
+                           onLevelChange(levelConfig.id);
+                         }
+                       }}
                        className={cn(
                        "w-full text-left p-4 rounded-xl border-2 transition-all hover:shadow-md",
                        activeLevel === levelConfig.id
                            ? "border-blue-500 bg-blue-50"
+                           : isLevelLocked
+                           ? "border-gray-200 opacity-60 cursor-not-allowed"
                            : "border-gray-200 hover:border-gray-300"
                        )}
+                       disabled={isLevelLocked}
                    >
                        <div className="flex items-start gap-3">
                        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", levelConfig.bgColor)}>
-                           <Icon className={cn("w-5 h-5", levelConfig.color)} />
+                           {isLevelLocked ? (
+                             <Lock className="w-5 h-5 text-gray-500" />
+                           ) : (
+                             <Icon className={cn("w-5 h-5", levelConfig.color)} />
+                           )}
                        </div>
                        <div className="flex-1">
                            <div className="flex items-center justify-between mb-1">
                            <h4>{levelConfig.name}</h4>
-                           <Badge variant="secondary" className="text-xs">
+                           {isLevelLocked ? (
+                             <Badge variant="secondary" className="text-xs bg-gray-300">
+                               🔒 Locked
+                             </Badge>
+                           ) : (
+                             <Badge variant="secondary" className="text-xs">
                                {stats.completed}/{stats.total}
-                           </Badge>
+                             </Badge>
+                           )}
                            </div>
                            <p className="text-sm text-muted-foreground mb-2">
                            {levelConfig.description}

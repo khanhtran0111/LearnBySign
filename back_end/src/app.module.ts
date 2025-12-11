@@ -7,6 +7,8 @@ import { MediaModule } from './media/media.module';
 import { LessonsModule } from './lessons/lessons.module';
 import { ProgressModule } from './progress/progress.module';
 import { SignRecognitionModule } from './sign-recognition/sign-recognition.module';
+import { PracticeTestModule } from './practice-test/practice-test.module';
+import { GameModule } from './game/game.module';
 
 @Module({
   imports: [
@@ -24,7 +26,9 @@ import { SignRecognitionModule } from './sign-recognition/sign-recognition.modul
     MediaModule,
     LessonsModule,
     ProgressModule,
-    SignRecognitionModule
+    SignRecognitionModule,
+    PracticeTestModule,
+    GameModule,
   ]
 })
 export class AppModule { }

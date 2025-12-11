@@ -2,12 +2,14 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
 import { Lesson, LessonDocument } from './schemas/lesson.schema';
+import { Progress, ProgressDocument } from '../progress/schemas/progress.schema';
 import { MediaService } from '../media/media.service';
 
 @Injectable()
 export class LessonsService {
     constructor(
         @InjectModel(Lesson.name) private lessonModel: Model<LessonDocument>,
+        @InjectModel(Progress.name) private progressModel: Model<ProgressDocument>,
         private mediaService: MediaService,
     ) { }
 
@@ -165,6 +167,92 @@ export class LessonsService {
         ow: 'Ơ',
         uw: 'Ư',
     };
+
+    /**
+     * Lấy tất cả lessons kèm trạng thái isLocked dựa trên tiến độ user
+     * Logic: 
+     * - Newbie lessons: Bài đầu unlock, các bài sau phải hoàn thành bài trước
+     * - Basic lessons: Phải hoàn thành TẤT CẢ Newbie (n1-n4)
+     * - Advanced lessons: Phải hoàn thành TẤT CẢ Basic (b1-b7)
+     */
+    async getLessonsWithProgress(userId: string, difficulty?: string): Promise<any[]> {
+        // 1. Lấy tất cả lessons
+        const filter = difficulty ? { difficulty } : {};
+        const allLessons = await this.lessonModel.find(filter).sort({ customId: 1 }).exec();
+
+        // 2. Lấy progress của user
+        const userProgress = await this.progressModel.find({ idUser: userId }).exec();
+        const completedLessonIds = new Set(
+            userProgress
+                .filter(p => p.completed)
+                .map(p => p.idLesson.toString())
+        );
+
+        // 3. Nhóm lessons theo difficulty
+        const newbieLessons = allLessons.filter(l => l.difficulty === 'newbie' && l.type === 'lesson').sort((a, b) => (a.customId || '').localeCompare(b.customId || ''));
+        const basicLessons = allLessons.filter(l => l.difficulty === 'basic' && l.type === 'lesson').sort((a, b) => (a.customId || '').localeCompare(b.customId || ''));
+        const advancedLessons = allLessons.filter(l => l.difficulty === 'advanced' && l.type === 'lesson').sort((a, b) => (a.customId || '').localeCompare(b.customId || ''));
+
+        // 4. Check điều kiện unlock
+        const allNewbieCompleted = newbieLessons.every(l => completedLessonIds.has(l._id.toString()));
+        const allBasicCompleted = basicLessons.every(l => completedLessonIds.has(l._id.toString()));
+
+        // 5. Gắn trạng thái isLocked cho từng lesson
+        const lessonsWithLock = allLessons.map((lesson, index, array) => {
+            const lessonObj = lesson.toObject();
+            let isLocked = false;
+
+            if (lesson.type === 'practice') {
+                // Practice lessons không bị lock
+                isLocked = false;
+            } else if (lesson.difficulty === 'newbie') {
+                // Newbie: Bài đầu unlock, các bài sau cần hoàn thành bài trước
+                const lessonIndex = newbieLessons.findIndex(l => l._id.toString() === lesson._id.toString());
+                if (lessonIndex === 0) {
+                    isLocked = false;
+                } else {
+                    const prevLesson = newbieLessons[lessonIndex - 1];
+                    isLocked = !completedLessonIds.has(prevLesson._id.toString());
+                }
+            } else if (lesson.difficulty === 'basic') {
+                // Basic: Phải hoàn thành TẤT CẢ Newbie
+                if (!allNewbieCompleted) {
+                    isLocked = true;
+                } else {
+                    // Nếu đã hoàn thành Newbie, check tuần tự trong Basic
+                    const lessonIndex = basicLessons.findIndex(l => l._id.toString() === lesson._id.toString());
+                    if (lessonIndex === 0) {
+                        isLocked = false;
+                    } else {
+                        const prevLesson = basicLessons[lessonIndex - 1];
+                        isLocked = !completedLessonIds.has(prevLesson._id.toString());
+                    }
+                }
+            } else if (lesson.difficulty === 'advanced') {
+                // Advanced: Phải hoàn thành TẤT CẢ Basic
+                if (!allBasicCompleted) {
+                    isLocked = true;
+                } else {
+                    // Nếu đã hoàn thành Basic, check tuần tự trong Advanced
+                    const lessonIndex = advancedLessons.findIndex(l => l._id.toString() === lesson._id.toString());
+                    if (lessonIndex === 0) {
+                        isLocked = false;
+                    } else {
+                        const prevLesson = advancedLessons[lessonIndex - 1];
+                        isLocked = !completedLessonIds.has(prevLesson._id.toString());
+                    }
+                }
+            }
+
+            return {
+                ...lessonObj,
+                isLocked,
+                isCompleted: completedLessonIds.has(lesson._id.toString()),
+            };
+        });
+
+        return lessonsWithLock;
+    }
 
     private createContentFromFile(file: { name: string; publicUrl: string }): {
         label: string;

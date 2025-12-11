@@ -147,6 +147,90 @@ export class ProgressService {
         await user.save();
     }
 
+    /**
+     * Đánh dấu một content đã học (thêm vào learnedContents)
+     */
+    async markContentLearned(
+        idUser: string,
+        idLesson: string,
+        contentLabel: string,
+    ): Promise<Progress> {
+        // Validate userId
+        if (!mongoose.Types.ObjectId.isValid(idUser)) {
+            throw new BadRequestException(`userId "${idUser}" không đúng định dạng ObjectId`);
+        }
+
+        // Resolve lessonId
+        let resolvedLessonId: string;
+        let lessonType: 'lesson' | 'practice';
+
+        if (!mongoose.Types.ObjectId.isValid(idLesson)) {
+            const lesson = await this.lessonModel.findOne({ customId: idLesson }).exec();
+            if (!lesson) {
+                throw new NotFoundException(`Không tìm thấy bài học với customId: ${idLesson}`);
+            }
+            resolvedLessonId = lesson._id.toString();
+            lessonType = lesson.type;
+        } else {
+            const lesson = await this.lessonModel.findById(idLesson).exec();
+            if (!lesson) {
+                throw new NotFoundException(`Không tìm thấy bài học với ID: ${idLesson}`);
+            }
+            resolvedLessonId = lesson._id.toString();
+            lessonType = lesson.type;
+        }
+
+        // Tìm hoặc tạo progress
+        let progress = await this.progressModel
+            .findOne({ idUser, idLesson: resolvedLessonId })
+            .exec();
+
+        if (!progress) {
+            // Tạo mới nếu chưa có
+            progress = new this.progressModel({
+                idUser,
+                idLesson: resolvedLessonId,
+                type: lessonType,
+                completed: false,
+                learnedContents: [contentLabel],
+                lastViewedAt: new Date(),
+            });
+        } else {
+            // Thêm contentLabel vào learnedContents nếu chưa có
+            if (!progress.learnedContents.includes(contentLabel)) {
+                progress.learnedContents.push(contentLabel);
+            }
+            progress.lastViewedAt = new Date();
+        }
+
+        await progress.save();
+        return progress;
+    }
+
+    /**
+     * Lấy danh sách content đã học của một lesson
+     */
+    async getLearnedContents(idUser: string, idLesson: string): Promise<string[]> {
+        // Resolve lessonId
+        let resolvedLessonId: string;
+
+        if (!mongoose.Types.ObjectId.isValid(idLesson)) {
+            const lesson = await this.lessonModel.findOne({ customId: idLesson }).exec();
+            if (!lesson) {
+                return [];
+            }
+            resolvedLessonId = lesson._id.toString();
+        } else {
+            resolvedLessonId = idLesson;
+        }
+
+        const progress = await this.progressModel
+            .findOne({ idUser, idLesson: resolvedLessonId })
+            .exec();
+
+        return progress?.learnedContents || [];
+    }
+
     async findByUser(idUser: string): Promise<Progress[]> {
         return this.progressModel
             .find({ idUser })

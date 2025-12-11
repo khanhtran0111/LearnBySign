@@ -587,33 +587,34 @@ export default function PracticePage() {
           </div>
 
           <div className="flex-1 grid grid-cols-2 gap-3 min-h-0">
-            <Card className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-300 flex flex-col justify-center">
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground mb-1">Thực hiện cử chỉ:</p>
-                
-                {/* Newbie: hiển thị chữ cái/số lớn */}
-                {exercise.signs && (
-                  <p className="text-7xl font-bold text-blue-600 mb-2">{currentSign}</p>
-                )}
-                
-                {/* Basic/Advanced: hiển thị GIF và label */}
-                {!exercise.signs && currentSignUrl && (
-                  <div className="mb-2">
-                    <img 
-                      src={currentSignUrl} 
-                      alt={currentSign}
-                      className="w-48 h-48 object-contain mx-auto rounded-lg border-2 border-blue-200 mb-2"
-                    />
-                    <p className="text-2xl font-bold text-blue-600 capitalize">
-                      {toVietnamese(currentSign)}
-                    </p>
-                  </div>
-                )}
+            <Card className="p-6 bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-300 flex flex-col justify-center">
+              <div className="text-center space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Thực hiện cử chỉ:</p>
+                  
+                  {/* Newbie: hiển thị chữ cái/số lớn */}
+                  {exercise.signs && (
+                    <p className="text-7xl font-bold text-blue-600">{currentSign}</p>
+                  )}
+                  
+                  {/* Basic/Advanced: CHỈ hiển thị tên class, KHÔNG có GIF */}
+                  {!exercise.signs && (
+                    <div className="space-y-2">
+                      <p className="text-4xl font-bold text-blue-600 capitalize">
+                        {toVietnamese(currentSign)}
+                      </p>
+                      <p className="text-sm text-gray-500 italic">
+                        Thực hiện ký hiệu theo yêu cầu
+                      </p>
+                    </div>
+                  )}
+                </div>
                 
                 <Button 
                   variant="outline" 
                   onClick={handleSkipSign}
                   size="sm"
+                  className="mx-auto"
                 >
                   <ArrowRight className="w-3 h-3 mr-1" />
                   Bỏ qua
@@ -626,7 +627,6 @@ export default function PracticePage() {
               {exercise.difficulty === 'advanced' ? (
                 <SignCameraSequence
                   targetSign={currentSign}
-                  targetGifUrl={currentSignUrl}
                   onCorrectSign={handleCorrectSign}
                   onIncorrectSign={() => {}}
                   sessionId={sessionId}

@@ -77,6 +77,11 @@ export function SignCameraSequence({
   const absenceCountRef = useRef(0);
   const recordingStateRef = useRef<RecordingState>("idle");
   const isProcessingRef = useRef(false);
+  
+  // Frame throttling để giới hạn ~30 FPS giống Model.py
+  const lastFrameTimeRef = useRef<number>(0);
+  const TARGET_FPS = 30;
+  const FRAME_INTERVAL = 1000 / TARGET_FPS; // ~33ms
 
   // Sync state với ref
   useEffect(() => {
@@ -347,10 +352,18 @@ export function SignCameraSequence({
       await videoRef.current.play();
       setIsRunning(true);
 
-      // Start detection loop
+      // Start detection loop với frame rate throttling ~30 FPS
       const detectFrame = async () => {
         if (videoRef.current && handsRef.current && streamRef.current) {
-          await handsRef.current.send({ image: videoRef.current });
+          const now = Date.now();
+          const elapsed = now - lastFrameTimeRef.current;
+          
+          // Chỉ xử lý khi đã đủ thời gian (throttle về ~30 FPS)
+          if (elapsed >= FRAME_INTERVAL) {
+            lastFrameTimeRef.current = now;
+            await handsRef.current.send({ image: videoRef.current });
+          }
+          
           animationRef.current = requestAnimationFrame(detectFrame);
         }
       };
