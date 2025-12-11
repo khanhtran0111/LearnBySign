@@ -12,7 +12,7 @@ export function FeaturesSection() {
     {
       icon: Hand,
       title: "Ký hiệu trực quan",
-      description: "Kết hợp ngôn ngữ ký hiệu với học ngoại ngữ, giúp trẻ khiếm thính tiếp cận kiến thức một cách tự nhiên.",
+      description: "Kết hợp ngôn ngữ ký hiệu, giúp trẻ khiếm thính tiếp cận kiến thức một cách tự nhiên.",
       color: "bg-gradient-to-br from-purple-500 to-purple-600"
     },
     {

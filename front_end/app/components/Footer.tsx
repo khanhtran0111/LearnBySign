@@ -13,7 +13,7 @@ export function Footer() {
               <h3 className="text-white">LearnBySign</h3>
             </div>
             <p className="text-gray-400 text-sm">
-              Nền tảng học ngoại ngữ dành cho trẻ em khiếm thính tại Việt Nam
+              Nền tảng học ngôn ngữ dành cho trẻ em khiếm thính tại Việt Nam
             </p>
           </div>
           

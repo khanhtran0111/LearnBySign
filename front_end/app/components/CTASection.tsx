@@ -17,7 +17,7 @@ export function CTASection({ onGetStarted }: CTASectionProps) {
             </h2>
             <p className="text-white/90 mb-6">
               Tham gia cùng LearnBySign để giúp các em phát triển 
-              kỹ năng ngoại ngữ một cách hiệu quả và vui vẻ.
+              kỹ năng ngôn ngữ một cách hiệu quả và vui vẻ.
             </p>
             <Button 
               size="lg" 

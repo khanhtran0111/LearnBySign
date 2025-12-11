@@ -13,16 +13,16 @@ export function HeroSection({ onGetStarted }: HeroSectionProps) {
         <div className="space-y-6">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full border border-blue-200">
             <Sparkles className="w-4 h-4 text-blue-600" />
-            <span className="text-sm text-blue-700">Học ngoại ngữ qua ký hiệu</span>
+            <span className="text-sm text-blue-700">Học ngôn ngữ qua ký hiệu</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-            Học ngoại ngữ thú vị cho{" "}
+            Học ngôn ngữ thú vị cho{" "}
             <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               trẻ em khiếm thính
             </span>
           </h1>
           <p className="text-lg text-muted-foreground">
-            LearnBySign là nền tảng học ngoại ngữ đặc biệt dành cho trẻ em khiếm thính tại Việt Nam. 
+            LearnBySign là nền tảng học ngôn ngữ đặc biệt dành cho trẻ em khiếm thính tại Việt Nam. 
             Chúng tôi sử dụng hình ảnh sinh động, ký hiệu trực quan và phương pháp giảng dạy tương tác 
             để giúp các em học tập hiệu quả và vui vẻ.
           </p>
