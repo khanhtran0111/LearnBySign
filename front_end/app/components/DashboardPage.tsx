@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from 'next/navigation'; 
+import axios from 'axios';
 import { DashboardHeader } from "./DashboardHeader";
 import { DashboardSidebar, StudyLevel, LessonType } from "./DashboardSidebar";
 import { DashboardContent } from "./DashboardContent";
@@ -7,8 +9,6 @@ import { PracticeMode } from "./PracticeMode";
 import { GameMode } from "./GameMode";
 import { Lesson } from "./LessonCard";
 import { Button } from "./ui/button";
-import { useRouter } from 'next/navigation'; 
-import axios from 'axios';
 import { lessonsData } from '@/app/data/lessonsData';
 
 
@@ -46,6 +46,7 @@ export interface DashboardStats {
 
 interface DashboardPageProps {
  onSignOut?: () => void;
+ defaultLevel?: StudyLevel;
 }
 
 
@@ -63,16 +64,64 @@ const fetchUserProfile = async (token: string): Promise<User> => {
    }
 };
 
+// Function tính toán stats từ completed lessons
+const calculateDashboardStats = (completedLessons: Set<string>): DashboardStats => {
+  // Đếm số lesson đã hoàn thành theo từng level (chỉ lesson, không tính practice)
+  const newbieLessons = lessonsData.newbie.flatMap(g => g.lessons.filter(l => l.type === 'lesson'));
+  const basicLessons = lessonsData.basic.flatMap(g => g.lessons.filter(l => l.type === 'lesson'));
+  const advancedLessons = lessonsData.advanced.flatMap(g => g.lessons.filter(l => l.type === 'lesson'));
 
-export function DashboardPage({ onSignOut }: DashboardPageProps) {
+  const newbieCompleted = newbieLessons.filter(l => completedLessons.has(l.id)).length;
+  const basicCompleted = basicLessons.filter(l => completedLessons.has(l.id)).length;
+  const advancedCompleted = advancedLessons.filter(l => completedLessons.has(l.id)).length;
+
+  const newbieTotal = newbieLessons.length;
+  const basicTotal = basicLessons.length;
+  const advancedTotal = advancedLessons.length;
+
+  const totalCompleted = newbieCompleted + basicCompleted + advancedCompleted;
+  const totalLessons = newbieTotal + basicTotal + advancedTotal;
+  const overallProgress = totalLessons > 0 ? Math.round((totalCompleted / totalLessons) * 100) : 0;
+
+  return {
+    streak: 0, // TODO: Tính streak từ API nếu có
+    totalScore: totalCompleted * 10, // Mỗi bài = 10 điểm
+    totalCompleted,
+    overallProgress,
+    levels: {
+      newbie: {
+        completed: newbieCompleted,
+        total: newbieTotal,
+        percent: newbieTotal > 0 ? Math.round((newbieCompleted / newbieTotal) * 100) : 0,
+      },
+      basic: {
+        completed: basicCompleted,
+        total: basicTotal,
+        percent: basicTotal > 0 ? Math.round((basicCompleted / basicTotal) * 100) : 0,
+      },
+      advanced: {
+        completed: advancedCompleted,
+        total: advancedTotal,
+        percent: advancedTotal > 0 ? Math.round((advancedCompleted / advancedTotal) * 100) : 0,
+      },
+    },
+  };
+};
+
+
+export function DashboardPage({ onSignOut, defaultLevel }: DashboardPageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
+  const [lessonsFromAPI, setLessonsFromAPI] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<LessonType>("study");
-  const [activeLevel, setActiveLevel] = useState<StudyLevel>("newbie");
+  const [activeLevel, setActiveLevel] = useState<StudyLevel>(defaultLevel || "newbie");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
 
   const currentLessons = lessonsData[activeLevel] || [];
 
@@ -82,25 +131,40 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
     n2: 'n2-chu-cai-i-p',
     n3: 'n3-chu-cai-q-z',
     n4: 'n4-so-0-9',
-    b1: 'b1-dong-vat-animals',
-    b2: 'b2-mau-sac-colors',
-    b3: 'b3-gia-dinh-family',
-    b4: 'b4-thuc-an-food',
-    a1: 'a1-chao-hoi-co-ban',
-    a2: 'a2-hoi-dap-thong-tin',
-    a3: 'a3-giao-tiep-hang-ngay',
+    b1: 'b1-nguoi-than-gia-dinh',
+    b2: 'b2-am-thuc',
+    b3: 'b3-cac-quoc-gia',
+    b4: 'b4-dong-vat',
+    b5: 'b5-phuong-tien',
+    b6: 'b6-hanh-dong',
+    b7: 'b7-cac-tu-khac',
+    a1: 'a1-cau-noi-co-ban-nang-cao',
   };
 
-  // Mapping slug cố định cho practices
   const practiceSlugById: Record<string, string> = {
     p1: 'p1-ghep-chu-cai-a-h',
     p2: 'p2-trac-nghiem-chu-cai-i-p',
     p3: 'p3-dien-chu-vao-cau-q-z',
     p4: 'p4-luyen-tap-so-0-9',
+    p5: 'p5-gia-dinh-am-thuc',
+    p6: 'p6-quoc-gia-dong-vat',
+    p7: 'p7-phuong-tien-hanh-dong',
+    p8: 'p8-giao-tiep-nang-cao',
+    p9: 'p9-cac-tu-khac',
   };
 
   const handlePlayLesson = (lesson: Lesson) => {
-    if (lesson.isLocked) return;
+    if (lesson.isLocked) {
+      // Hiển thị thông báo chi tiết hơn
+      const message = activeLevel === 'basic' 
+        ? '🔒 Bài học này chưa mở khóa!\n\nĐể học Basic, bạn cần hoàn thành TẤT CẢ các bài Newbie (n1-n4) trước.'
+        : activeLevel === 'advanced'
+        ? '🔒 Bài học này chưa mở khóa!\n\nĐể học Advanced, bạn cần hoàn thành TẤT CẢ các bài Basic (b1-b7) trước.'
+        : '🔒 Bài học này chưa mở khóa!\n\nVui lòng hoàn thành bài học trước đó.';
+      
+      alert(message);
+      return;
+    }
     
     // Xác định slug dựa trên type
     if (lesson.type === 'practice') {
@@ -130,6 +194,11 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
   const handleCloseSidebar = () => {
     setIsSidebarOpen(false);
   };
+
+  const handleLevelChange = (level: StudyLevel) => {
+    setActiveLevel(level);
+    router.push(`/dashboard/${level}`);
+  };
   
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
@@ -144,9 +213,16 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
     const loadProfile = async () => {
       try {
         console.log('[DashboardPage] Loading user profile...');
-        const profileData = await fetchUserProfile(token);
+        const profileResponse = await axios.get(`${BACKEND_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const profileData = profileResponse.data;
         setUser(profileData);
-        console.log('[DashboardPage] User profile loaded:', profileData.email);
+        
+        // Lấy userId từ profile response
+        const userIdFromProfile = profileResponse.data._id || profileResponse.data.id;
+        setUserId(userIdFromProfile);
+        console.log('[DashboardPage] User profile loaded:', profileData.email, 'userId:', userIdFromProfile);
 
         console.log('[DashboardPage] Loading progress...');
         const progressResponse = await axios.get(`${BACKEND_URL}/progress`, {
@@ -162,7 +238,22 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
           );
           setCompletedLessons(completed);
           console.log('[DashboardPage] Progress loaded, completed lessons:', completed.size);
+
+          // Tính toán stats từ progress data
+          const stats = calculateDashboardStats(completed);
+          setDashboardStats(stats);
+          console.log('[DashboardPage] Stats calculated:', stats);
         }
+
+        // Gọi API mới để lấy lessons kèm trạng thái locked
+        console.log('[DashboardPage] Loading lessons with lock status...');
+        const lessonsResponse = await axios.get(`${BACKEND_URL}/lessons/with-progress/${userIdFromProfile}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setLessonsFromAPI(lessonsResponse.data || []);
+        console.log('[DashboardPage] Lessons with lock status loaded:', lessonsResponse.data?.length);
         
         console.log('[DashboardPage] All data loaded successfully');
         setIsLoading(false);
@@ -195,7 +286,7 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
     };
 
     loadProfile();
-  }, [router]);
+  }, [router, searchParams]); // Thêm searchParams để reload khi có query param thay đổi
   
   if (isLoading) {
     return (
@@ -242,10 +333,21 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
 
   const updatedLessons = currentLessons.map(group => ({
     ...group,
-    lessons: group.lessons.map(lesson => ({
-      ...lesson,
-      isCompleted: completedLessons.has(lesson.id)
-    }))
+    lessons: group.lessons.map((lesson) => {
+      // Tìm lesson tương ứng từ API response
+      const apiLesson = lessonsFromAPI.find(l => l.customId === lesson.id);
+      
+      // Nếu có từ API, dùng isLocked và isCompleted từ API
+      // Nếu không, giữ nguyên logic cũ
+      const isCompleted = apiLesson ? apiLesson.isCompleted : completedLessons.has(lesson.id);
+      const isLocked = apiLesson ? apiLesson.isLocked : lesson.isLocked;
+
+      return {
+        ...lesson,
+        isCompleted,
+        isLocked,
+      };
+    })
   }));
 
   return (
@@ -264,15 +366,17 @@ export function DashboardPage({ onSignOut }: DashboardPageProps) {
           activeTab={activeTab}
           activeLevel={activeLevel}
           onTabChange={setActiveTab}
-          onLevelChange={setActiveLevel}
+          onLevelChange={handleLevelChange}
           isOpen={isSidebarOpen}
           onClose={handleCloseSidebar}
+          levelStats={dashboardStats?.levels}
         />
         {activeTab === "study" ? (
           <DashboardContent
             level={activeLevel}
             lessonGroups={updatedLessons}
             onPlayLesson={handlePlayLesson}
+            stats={dashboardStats ?? undefined}
           />
         ) : activeTab === "practice" ? (
           <PracticeMode />

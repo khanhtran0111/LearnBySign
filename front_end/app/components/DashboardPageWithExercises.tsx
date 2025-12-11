@@ -381,7 +381,7 @@ export function DashboardPageWithExercises({ onSignOut }: DashboardPageWithExerc
       </div>
 
       {/* Video Player Modal */}
-      {selectedLesson && (
+      {selectedLesson && selectedLesson.videoUrl && (
         <VideoPlayer
           videoUrl={selectedLesson.videoUrl}
           title={selectedLesson.title}

@@ -40,3 +40,26 @@ export class MarkProgressDto {
     @IsNumber()
     correctAnswers?: number;
 }
+
+export class MarkContentLearnedDto {
+    @ApiProperty({
+        description: 'MongoDB ObjectId của user',
+        example: '507f1f77bcf86cd799439012',
+    })
+    @IsString()
+    idUser: string;
+
+    @ApiProperty({
+        description: 'MongoDB ObjectId hoặc customId của bài học',
+        example: 'n1',
+    })
+    @IsString()
+    idLesson: string;
+
+    @ApiProperty({
+        description: 'Label của content đã học (VD: "A", "B", "Xin chào")',
+        example: 'A',
+    })
+    @IsString()
+    contentLabel: string;
+}

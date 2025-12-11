@@ -1,8 +1,22 @@
+# VSL Model Dependencies
+# Supports both single-frame (joblib) and sequence (LSTM) models
+
+# Core
 numpy>=1.24.0
 scikit-learn>=1.3.0
 joblib>=1.3.0
-mediapipe>=0.10.0
+
+# Computer Vision
+opencv-python>=4.8.0
+
+# MediaPipe - Required for Python 3.8-3.12 only
+# If using Python 3.13+, comment this out (landmarks are extracted on frontend)
+# mediapipe>=0.10.0
+
+# Deep Learning - TensorFlow for LSTM model
+tensorflow>=2.15.0
+
+# API Server
 fastapi>=0.104.0
 uvicorn>=0.24.0
 pydantic>=2.5.0
-opencv-python>=4.8.0

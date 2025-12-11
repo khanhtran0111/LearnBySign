@@ -4,11 +4,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "axios";
-import { ArrowLeft, PlayCircle, X, CheckCircle, Loader2 } from "lucide-react";
+import { toVietnamese } from "@/app/utils/vietnameseMapping";
+import { ArrowLeft, PlayCircle, X, CheckCircle, Loader2, BookCheck } from "lucide-react";
 import { DashboardHeader } from "@/app/components/DashboardHeader";
 import { Card } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
+import { Progress as ProgressBar } from "@/app/components/ui/progress";
 
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -50,6 +52,7 @@ export default function LessonPage() {
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
   const slug = params.slug as string;
   const [lesson, setLesson] = useState<any>(null);
+  const [learnedContents, setLearnedContents] = useState<Set<string>>(new Set());
   const customId = slug.split("-")[0];
 
   useEffect(() => {
@@ -83,6 +86,21 @@ export default function LessonPage() {
       console.log('[LessonPage] Loaded lesson:', response.data);
       console.log('[LessonPage] Contents:', response.data.contents);
       setLesson(response.data);
+
+      // Load learned contents
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        try {
+          const learnedResponse = await axios.get(
+            `${BACKEND_URL}/progress/learned-contents/${customId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setLearnedContents(new Set(learnedResponse.data || []));
+          console.log('[LessonPage] Learned contents:', learnedResponse.data);
+        } catch (err) {
+          console.error('[LessonPage] Error loading learned contents:', err);
+        }
+      }
     } catch (error) {
       console.error("Error loading lesson:", error);
     }
@@ -92,7 +110,37 @@ export default function LessonPage() {
 }, [slug]);
 
   const handleClose = () => {
-    router.push('/dashboard');
+    // Xác định level từ customId
+    let level = 'newbie';
+    if (customId.startsWith('b') || customId === 'p5' || customId === 'p6' || customId === 'p7' || customId === 'p9') {
+      level = 'basic';
+    } else if (customId.startsWith('a') || customId === 'p8') {
+      level = 'advanced';
+    }
+    router.push(`/dashboard/${level}`);
+  };
+
+  const handleMarkContentLearned = async (contentLabel: string) => {
+    const token = localStorage.getItem('accessToken');
+    if (!token || !user) return;
+
+    try {
+      await axios.post(
+        `${BACKEND_URL}/progress/mark-content`,
+        {
+          idUser: user._id || user.id,
+          idLesson: customId,
+          contentLabel: contentLabel,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // Cập nhật local state
+      setLearnedContents(prev => new Set([...prev, contentLabel]));
+      console.log('[LessonPage] Marked content learned:', contentLabel);
+    } catch (error) {
+      console.error('[LessonPage] Error marking content learned:', error);
+    }
   };
 
   const handleNext = () => {
@@ -157,7 +205,15 @@ export default function LessonPage() {
       });
 
       alert(`Chúc mừng! Bạn đã hoàn thành bài học và nhận được ${totalScore} điểm!`);
-      router.push('/dashboard');
+      
+      // Xác định level và redirect về đúng route
+      let level = 'newbie';
+      if (customId.startsWith('b') || customId === 'p5' || customId === 'p6' || customId === 'p7' || customId === 'p9') {
+        level = 'basic';
+      } else if (customId.startsWith('a') || customId === 'p8') {
+        level = 'advanced';
+      }
+      router.push(`/dashboard/${level}?refresh=` + Date.now());
     } catch (error) {
       console.error('[LessonPage] Error marking progress:', error);
       if (axios.isAxiosError(error)) {
@@ -215,7 +271,29 @@ export default function LessonPage() {
             <Badge variant="secondary" className="text-sm">
               📚 {lesson.contents?.length} nội dung
             </Badge>
+            <Badge variant="secondary" className="text-sm bg-green-100 text-green-700">
+              ✅ {learnedContents.size}/{lesson.contents?.length} đã học
+            </Badge>
           </div>
+
+          {/* Progress Bar */}
+          <Card className="p-4 mb-6 bg-gradient-to-r from-blue-50 to-purple-50">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-gray-700">Tiến độ học tập</span>
+              <span className="text-sm font-bold text-blue-600">
+                {lesson.contents?.length > 0 
+                  ? Math.round((learnedContents.size / lesson.contents.length) * 100)
+                  : 0}%
+              </span>
+            </div>
+            <ProgressBar 
+              value={lesson.contents?.length > 0 
+                ? (learnedContents.size / lesson.contents.length) * 100 
+                : 0
+              } 
+              className="h-3"
+            />
+          </Card>
 
           {/* Instructions */}
           <Card className="p-4 bg-blue-50 border-blue-200 mb-6">
@@ -229,27 +307,74 @@ export default function LessonPage() {
 
           {/* Content Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {lesson.contents?.map((item: any, index: number) => (
+            {lesson.contents?.map((item: any, index: number) => {
+              const isLearned = learnedContents.has(item.label);
+              return (
               <Card
                 key={index}
-                className="p-6 hover:shadow-xl transition-all duration-300 border-2 hover:border-blue-400 cursor-pointer hover:scale-105"
-                onClick={() => {
-                  console.log('[LessonPage] Selected item:', item);
-                  console.log('[LessonPage] VideoUrl:', item.videoUrl);
-                  setSelectedLetter(item);
-                  setCurrentIndex(index);
-                }}
+                className={`p-6 transition-all duration-300 border-2 relative ${
+                  isLearned 
+                    ? 'bg-green-50 border-green-400 shadow-md' 
+                    : 'hover:shadow-xl hover:border-blue-400 cursor-pointer hover:scale-105'
+                }`}
               >
-                <div className="text-center mb-4">
+                {/* Badge "Đã học" */}
+                {isLearned && (
+                  <div className="absolute top-2 right-2">
+                    <Badge className="bg-green-500 text-white text-xs">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Đã học
+                    </Badge>
+                  </div>
+                )}
+
+                <div 
+                  className="text-center mb-4 cursor-pointer"
+                  onClick={() => {
+                    console.log('[LessonPage] Selected item:', item);
+                    console.log('[LessonPage] VideoUrl:', item.videoUrl);
+                    setSelectedLetter(item);
+                    setCurrentIndex(index);
+                  }}
+                >
                   <h3 className="text-3xl font-bold text-blue-600 mb-2">
-                    {item.label}
+                    {toVietnamese(item.label)}
                   </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {customId.startsWith('n') || customId.startsWith('p1') || customId.startsWith('p2') || customId.startsWith('p3') || customId.startsWith('p4') 
+                      ? item.description 
+                      : toVietnamese(item.label)}
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground text-center">
-                  {item.description}
-                </p>
+
+                {/* Nút "Đã hiểu" */}
+                <Button
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMarkContentLearned(item.label);
+                  }}
+                  disabled={isLearned}
+                  className={`w-full ${
+                    isLearned
+                      ? 'bg-gray-300 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'
+                  }`}
+                >
+                  {isLearned ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Đã hiểu
+                    </>
+                  ) : (
+                    <>
+                      <BookCheck className="w-4 h-4 mr-2" />
+                      Đánh dấu đã hiểu
+                    </>
+                  )}
+                </Button>
               </Card>
-            ))}
+            )})}
           </div>
 
           {/* Complete Lesson */}
@@ -303,22 +428,40 @@ export default function LessonPage() {
             <div className="aspect-video bg-black flex items-center justify-center">
               {selectedLetter.videoUrl?.endsWith(".gif") ? (
                 <img
-                  src={`${selectedLetter.videoUrl}?t=${Date.now()}`}
+                  src={selectedLetter.videoUrl}
                   alt={selectedLetter.label}
                   className="max-h-full max-w-full object-contain"
+                  onError={(e) => {
+                    console.error('[LessonPage] Failed to load image:', selectedLetter.videoUrl);
+                    // Fallback: hiển thị text thay vì placeholder
+                    e.currentTarget.style.display = 'none';
+                    const fallback = document.createElement('div');
+                    fallback.className = 'text-white text-center p-8';
+                    fallback.innerHTML = `<p class="text-2xl mb-2">${selectedLetter.label}</p><p class="text-sm opacity-70">Không thể tải hình ảnh</p>`;
+                    e.currentTarget.parentElement?.appendChild(fallback);
+                  }}
                 />
               ) : selectedLetter.videoUrl?.endsWith(".mp4") ? (
                 <video
                   src={selectedLetter.videoUrl}
                   controls
                   className="w-full h-full object-contain"
-                />
+                  onError={(e) => {
+                    console.error('[LessonPage] Failed to load video:', selectedLetter.videoUrl);
+                  }}
+                >
+                  <div className="text-white text-center p-8">
+                    <p className="text-2xl mb-2">{selectedLetter.label}</p>
+                    <p className="text-sm opacity-70">Trình duyệt không hỗ trợ video này</p>
+                  </div>
+                </video>
               ) : (
                 <iframe
                   width="100%"
                   height="100%"
                   src={selectedLetter.videoUrl}
                   allowFullScreen
+                  title={selectedLetter.label}
                 />
               )}
             </div>

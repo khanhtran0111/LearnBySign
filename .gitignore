@@ -16,9 +16,6 @@ dist/
 build/
 .next/
 
-# --- Media & Heavy Data ---
-gif_stage/
-*.log
 
 venv/
 __pycache__/

@@ -29,7 +29,7 @@ export function LessonCard({ lesson, onPlay }: LessonCardProps) {
  const badgeColor = isPractice ? 'bg-pink-500' : 'bg-blue-500';
  const badgeText = isPractice ? '' : '';
   return (
-   <Card className="overflow-hidden hover:shadow-lg transition-shadow border-2 hover:border-blue-200">
+   <Card className={`overflow-hidden hover:shadow-lg transition-shadow border-2 hover:border-blue-200 ${lesson.isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}>
      <div className="relative aspect-video bg-gray-100">
        <ImageWithFallback
          src={lesson.thumbnailUrl}
@@ -37,10 +37,11 @@ export function LessonCard({ lesson, onPlay }: LessonCardProps) {
          className="w-full h-full object-cover"
        />
        {lesson.isLocked && (
-         <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-           <div className="text-center text-white">
-             <Lock className="w-5 h-5 mx-auto mb-1" />
-             <p className="text-xs">Hoàn thành bài trước</p>
+         <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
+           <div className="text-center text-white px-4">
+             <Lock className="w-8 h-8 mx-auto mb-2" />
+             <p className="text-sm font-semibold">Chưa mở khóa</p>
+             <p className="text-xs mt-1 opacity-90">Hoàn thành bài trước để mở khóa</p>
            </div>
          </div>
        )}

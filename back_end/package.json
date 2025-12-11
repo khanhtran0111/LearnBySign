@@ -11,6 +11,8 @@
     "start": "nest start",
     "start:dev": "concurrently \"npm run start:python\" \"nest start --watch\" --names \"PYTHON,NESTJS\" --prefix-colors \"yellow,cyan\" --kill-others-on-fail",
     "start:python": "python vsl_model/main.py",
+    "start:python:env": "cd vsl_model && run_with_env.bat",
+    "setup:python": "cd vsl_model && setup_env.bat",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",

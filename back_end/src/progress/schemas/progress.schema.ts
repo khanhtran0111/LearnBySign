@@ -23,6 +23,9 @@ export class Progress {
     @Prop({ default: 0 })
     correctAnswers: number;
 
+    @Prop({ type: [String], default: [] })
+    learnedContents: string[]; // Mảng chứa các label của content đã học (VD: ['A', 'B', 'C'])
+
     @Prop({ default: Date.now })
     lastViewedAt: Date;
 }

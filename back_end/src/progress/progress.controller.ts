@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Param, Query, UseGuards, Req } from '@nest
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { ProgressService } from './progress.service';
-import { MarkProgressDto } from './dto/mark-progress.dto';
+import { MarkProgressDto, MarkContentLearnedDto } from './dto/mark-progress.dto';
 
 @ApiTags('Progress')
 @Controller('progress')
@@ -105,6 +105,32 @@ export class ProgressController {
     @ApiResponse({ status: 404, description: 'Không tìm thấy bài học' })
     markProgress(@Body() markProgressDto: MarkProgressDto) {
         return this.progressService.markProgress(markProgressDto);
+    }
+
+    @Post('mark-content')
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
+    @ApiOperation({
+        summary: 'Đánh dấu một content đã học trong lesson',
+        description: 'API này được gọi khi user click "Đã hiểu" trên một card content (VD: chữ A, chữ B...). Lưu vào mảng learnedContents.',
+    })
+    @ApiBody({ type: MarkContentLearnedDto })
+    @ApiResponse({ status: 201, description: 'Content đã được đánh dấu' })
+    markContentLearned(@Body() dto: MarkContentLearnedDto) {
+        return this.progressService.markContentLearned(dto.idUser, dto.idLesson, dto.contentLabel);
+    }
+
+    @Get('learned-contents/:lessonId')
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
+    @ApiOperation({
+        summary: 'Lấy danh sách content đã học của một lesson',
+        description: 'Trả về mảng các label (VD: ["A", "B", "C"]) đã được đánh dấu "Đã hiểu"',
+    })
+    @ApiParam({ name: 'lessonId', description: 'MongoDB ObjectId hoặc customId của lesson' })
+    @ApiResponse({ status: 200, description: 'Danh sách label đã học', schema: { type: 'array', items: { type: 'string' } } })
+    getLearnedContents(@Req() req: any, @Param('lessonId') lessonId: string) {
+        return this.progressService.getLearnedContents(req.user.sub, lessonId);
     }
 
     @Get(':idUser')
