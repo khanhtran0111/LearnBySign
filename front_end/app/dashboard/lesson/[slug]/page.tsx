@@ -120,9 +120,29 @@ export default function LessonPage() {
     router.push(`/dashboard/${level}`);
   };
 
+  const findNextUnlearnedContent = (fromIndex: number, learned: Set<string>) => {
+    if (!lesson || !lesson.contents) return null;
+
+    // Tìm từ tiếp theo chưa học
+    for (let i = fromIndex + 1; i < lesson.contents.length; i++) {
+      if (!learned.has(lesson.contents[i].label)) {
+        return i;
+      }
+    }
+
+    // Nếu không có từ tiếp theo chưa học, tìm ngược lại từ đầu
+    for (let i = 0; i < fromIndex; i++) {
+      if (!learned.has(lesson.contents[i].label)) {
+        return i;
+      }
+    }
+
+    return null;
+  };
+
   const handleMarkContentLearned = async (contentLabel: string) => {
     const token = localStorage.getItem('accessToken');
-    if (!token || !user) return;
+    if (!token || !user || currentIndex === null) return;
 
     try {
       await axios.post(
@@ -136,8 +156,21 @@ export default function LessonPage() {
       );
 
       // Cập nhật local state
-      setLearnedContents(prev => new Set([...prev, contentLabel]));
+      const updatedLearned = new Set([...learnedContents, contentLabel]);
+      setLearnedContents(updatedLearned);
       console.log('[LessonPage] Marked content learned:', contentLabel);
+
+      // Tìm content chưa học gần nhất
+      const nextUnlearnedIndex = findNextUnlearnedContent(currentIndex, updatedLearned);
+      
+      if (nextUnlearnedIndex !== null) {
+        // Chuyển sang content chưa học gần nhất
+        setCurrentIndex(nextUnlearnedIndex);
+        setSelectedLetter(lesson.contents[nextUnlearnedIndex]);
+      } else {
+        // Tất cả đã học, đóng modal
+        setSelectedLetter(null);
+      }
     } catch (error) {
       console.error('[LessonPage] Error marking content learned:', error);
     }
@@ -346,53 +379,42 @@ export default function LessonPage() {
                       : toVietnamese(item.label)}
                   </p>
                 </div>
-
-                {/* Nút "Đã hiểu" */}
-                <Button
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMarkContentLearned(item.label);
-                  }}
-                  disabled={isLearned}
-                  className={`w-full ${
-                    isLearned
-                      ? 'bg-gray-300 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'
-                  }`}
-                >
-                  {isLearned ? (
-                    <>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Đã hiểu
-                    </>
-                  ) : (
-                    <>
-                      <BookCheck className="w-4 h-4 mr-2" />
-                      Đánh dấu đã hiểu
-                    </>
-                  )}
-                </Button>
               </Card>
             )})}
           </div>
 
           {/* Complete Lesson */}
           <div className="mt-8 text-center">
-            <Card className="p-6 bg-gradient-to-r from-green-50 to-blue-50">
+            <Card className={`p-6 transition-all ${
+              learnedContents.size === lesson.contents?.length 
+                ? 'bg-gradient-to-r from-green-50 to-blue-50' 
+                : 'bg-gradient-to-r from-gray-50 to-gray-100 opacity-60'
+            }`}>
               <div className="flex items-center justify-center gap-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
+                <CheckCircle className={`w-8 h-8 ${
+                  learnedContents.size === lesson.contents?.length 
+                    ? 'text-green-600' 
+                    : 'text-gray-400'
+                }`} />
                 <div className="text-left">
                   <h3 className="text-xl font-semibold">Hoàn thành bài học</h3>
                   <p className="text-sm text-muted-foreground">
-                    Đánh dấu hoàn thành sau khi luyện tập xong
+                    {learnedContents.size === lesson.contents?.length 
+                      ? 'Bạn đã học hết tất cả từ, hãy bấm hoàn thành'
+                      : `Bạn cần học hết ${lesson.contents?.length - learnedContents.size} từ nữa`
+                    }
                   </p>
                 </div>
 
                 <Button
                   size="lg"
                   onClick={handleCompleteLesson}
-                  className="bg-green-600 hover:bg-green-700"
+                  disabled={learnedContents.size !== lesson.contents?.length}
+                  className={`${
+                    learnedContents.size === lesson.contents?.length
+                      ? 'bg-green-600 hover:bg-green-700'
+                      : 'bg-gray-400 cursor-not-allowed'
+                  }`}
                 >
                   <CheckCircle className="w-5 h-5 mr-2" />
                   Hoàn thành
@@ -481,10 +503,11 @@ export default function LessonPage() {
               </p>
 
               <Button
-                onClick={handleNext}
-                className="bg-blue-600 text-white hover:bg-blue-700"
+                onClick={() => handleMarkContentLearned(selectedLetter.label)}
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
               >
-                Tiếp ➡️
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Đã hiểu bài ✓
               </Button>
 
             </div>

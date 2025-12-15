@@ -40,10 +40,9 @@ export function HeroSection({ onGetStarted }: HeroSectionProps) {
           </div>
         </div>
         <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-200 to-purple-200 rounded-3xl blur-3xl opacity-30"></div>
-          <div className="relative rounded-3xl overflow-hidden shadow-2xl">
+          <div className="relative rounded-3xl overflow-hidden">
             <ImageWithFallback
-              src="https://images.unsplash.com/photo-1546410531-bb4caa6b424d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaGlsZHJlbiUyMGxlYXJuaW5nJTIwc2lnbiUyMGxhbmd1YWdlfGVufDF8fHx8MTc2MDEzMjE0Nnww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+              src="/images/herosection.png"
               alt="Trẻ em học ngôn ngữ ký hiệu"
               className="w-full h-auto"
             />
