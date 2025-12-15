@@ -1,24 +1,25 @@
+import { Agent } from "http";
 import { FeatureCard } from "./FeatureCard";
 import { Image, Hand, Gamepad2, BookOpen, Award, Users } from "lucide-react";
 
 export function FeaturesSection() {
   const features = [
     {
-      icon: Image,
-      title: "Học qua hình ảnh",
-      description: "Sử dụng hình ảnh sinh động, màu sắc tươi sáng giúp trẻ dễ dàng ghi nhớ từ vựng và cấu trúc câu.",
+      icon: Hand,
+      title: "Học qua hình ảnh động",
+      description: "Sử dụng hình ảnh sinh động, trực quan, màu sắc tươi sáng giúp trẻ dễ dàng ghi nhớ từ vựng và cấu trúc câu.",
       color: "bg-gradient-to-br from-blue-500 to-blue-600"
     },
     {
-      icon: Hand,
-      title: "Ký hiệu trực quan",
-      description: "Kết hợp ngôn ngữ ký hiệu, giúp trẻ khiếm thính tiếp cận kiến thức một cách tự nhiên.",
+      icon: Image,
+      title: "AI nhận diện ngôn ngữ ký hiệu",
+      description: "Tích hợp AI agent nhận diện Vietnamese Sign Language (VSL), giúp trẻ được học với các công cụ tối ưu nhất.",
       color: "bg-gradient-to-br from-purple-500 to-purple-600"
     },
     {
       icon: Gamepad2,
       title: "Học qua trò chơi",
-      description: "Các trò chơi tương tác vui nhộn giúp trẻ học mà không cảm thấy nhàm chán, luôn hứng thú với bài học.",
+      description: "Các trò chơi tương tác vui nhộn giúp trẻ học mà không cảm thấy nhàm chán, giúp trẻ vừa chơi vừa nhớ bài lâu hơn.",
       color: "bg-gradient-to-br from-green-500 to-green-600"
     },
     {

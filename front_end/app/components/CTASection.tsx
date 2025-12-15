@@ -30,9 +30,9 @@ export function CTASection({ onGetStarted }: CTASectionProps) {
           </div>
           <div className="hidden md:block h-full">
             <ImageWithFallback
-              src="https://images.unsplash.com/photo-1539893867126-7ce0b48971ca?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2xvcmZ1bCUyMGVkdWNhdGlvbiUyMGtpZHN8ZW58MXx8fHwxNzYwMDQzMTA3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+              src="/images/footer.png"
               alt="Trẻ em học tập"
-              className="w-full h-full object-cover"
+              className="w-full h-90 object-cover"
             />
           </div>
         </div>

@@ -23,12 +23,6 @@ export class GameService {
     private gameSessionModel: Model<GameSession>,
   ) {}
 
-  /**
-   * Lấy câu hỏi game theo level
-   * - Newbie: chữ cái A-Z, số 0-9
-   * - Basic: từ vựng từ b1-b7
-   * - Advanced: câu giao tiếp từ a1
-   */
   async getGameQuestions(
     level: 'newbie' | 'basic' | 'advanced',
     count: number = 30,
@@ -65,32 +59,45 @@ export class GameService {
       }
     }
 
-    // Shuffle và chọn random
-    const shuffled = this.shuffleArray(allContents);
-    const selected = shuffled.slice(0, count);
+    // Nếu không có câu hỏi, trả về mảng rỗng
+    if (allContents.length === 0) {
+      console.warn(`No content found for level: ${level}`);
+      return [];
+    }
 
     // Tạo câu hỏi trắc nghiệm với 4 đáp án
-    const questions: GameQuestion[] = selected.map((content, idx) => {
-      // Tạo 3 đáp án sai từ pool còn lại
-      const wrongOptions = shuffled
-        .filter(c => c.label !== content.label)
-        .slice(0, 3)
-        .map(c => c.label);
+    // Cho phép lặp lại các item nhưng với đáp án khác nhau
+    const questions: GameQuestion[] = [];
+    
+    for (let i = 0; i < count; i++) {
+      // Random chọn 1 câu hỏi từ pool
+      const correctContent = allContents[Math.floor(Math.random() * allContents.length)];
+      
+      // Tạo 3 đáp án sai từ pool, chắc chắn khác với đáp án đúng
+      const wrongOptionsSet = new Set<string>();
+      while (wrongOptionsSet.size < 3) {
+        const wrongContent = allContents[Math.floor(Math.random() * allContents.length)];
+        if (wrongContent.label !== correctContent.label) {
+          wrongOptionsSet.add(wrongContent.label);
+        }
+      }
+      
+      const wrongOptions = Array.from(wrongOptionsSet);
 
       // Mix correct answer vào vị trí random
-      const allOptions = [content.label, ...wrongOptions];
+      const allOptions = [correctContent.label, ...wrongOptions];
       const shuffledOptions = this.shuffleArray(allOptions);
 
-      return {
-        id: `${level}_q${idx}`,
+      questions.push({
+        id: `${level}_q${i}`,
         level,
-        question: content.label,
-        gifUrl: content.videoUrl,
+        question: correctContent.label,
+        gifUrl: correctContent.videoUrl,
         options: shuffledOptions,
-        correctAnswer: content.label,
+        correctAnswer: correctContent.label,
         modelType: level === 'advanced' ? 'vsl' : 'asl',
-      };
-    });
+      });
+    }
 
     return questions;
   }
