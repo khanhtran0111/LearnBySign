@@ -36,6 +36,7 @@ interface SignCameraSequenceProps {
   onIncorrectSign?: () => void;
   sessionId?: string;
   showSuccessAnimation?: boolean;
+  autoAdvanceImmediate?: boolean; // Tự động advance ngay khi phát hiện đúng
 }
 
 const VSL_API_URL = process.env.NEXT_PUBLIC_VSL_API_URL || "http://localhost:8000";
@@ -52,6 +53,7 @@ export function SignCameraSequence({
   onIncorrectSign,
   sessionId = "default",
   showSuccessAnimation = true,
+  autoAdvanceImmediate = false, // Tự động advance ngay khi phát hiện đúng
 }: SignCameraSequenceProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -188,21 +190,15 @@ export function SignCameraSequence({
       });
 
       if (result.success && result.label) {
-        // Kiểm tra xem có match với target không
-        const predictedLabel = result.label.toLowerCase().replace(/_/g, ' ');
-        const targetLabel = targetSign.toLowerCase().replace(/_/g, ' ');
+        // Tự động coi là đúng khi phát hiện được hành động
+        setShowSuccess(true);
+        setStatusMessage(`✅ Đúng!`);
         
-        if (predictedLabel.includes(targetLabel) || targetLabel.includes(predictedLabel)) {
-          setShowSuccess(true);
-          setStatusMessage(`✅ Chính xác! "${result.label}"`);
-          
-          setTimeout(() => {
-            onCorrectSign();
-          }, 1500);
-        } else {
-          setStatusMessage(`Dự đoán: "${result.label}" (${(result.confidence * 100).toFixed(0)}%)`);
-          if (onIncorrectSign) onIncorrectSign();
-        }
+        // Delay 2 giây trước khi chuyển câu tiếp theo
+        setTimeout(() => {
+          setShowSuccess(false);
+          onCorrectSign();
+        }, 2000);
       } else {
         setStatusMessage("Không nhận diện được. Vui lòng thử lại!");
       }
@@ -477,11 +473,11 @@ export function SignCameraSequence({
         )}
 
         {/* Success animation */}
-        {showSuccess && showSuccessAnimation && (
-          <div className="absolute inset-0 flex items-center justify-center bg-green-500/30 animate-pulse">
+        {showSuccess && (
+          <div className="absolute inset-0 flex items-center justify-center bg-green-500/90 backdrop-blur-sm z-10">
             <div className="text-center text-white">
-              <div className="text-6xl mb-2">✅</div>
-              <p className="text-2xl font-bold">Chính xác!</p>
+              <div className="text-8xl mb-4 animate-bounce">✅</div>
+              <p className="text-4xl font-bold">Đúng!</p>
             </div>
           </div>
         )}

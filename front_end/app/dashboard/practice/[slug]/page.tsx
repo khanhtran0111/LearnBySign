@@ -115,7 +115,18 @@ const mockExercises: Record<string, any> = {
     exerciseType: "matching",
     difficulty: "advanced",
     points: 100,
-    lessonIds: ['a1'], // Lấy từ vựng từ bài Advanced
+    signs: [
+      'ban dang lam gi the',
+      'ban ten la gi',
+      'cam on',
+      'chuc mung',
+      'ban hieu ngon ngu ky tu khong',
+      'xin chao',
+      'tam biet',
+      'ban khoe khong',
+      'ban ay yeu ban',
+      'toi yeu ban ay',
+    ],
   },
 };
 
@@ -253,8 +264,23 @@ export default function PracticePage() {
             }
           }
           
-          setAvailableSigns(allContents);
-          availableSignsRef.current = allContents;
+          // Lọc câu hỏi nếu là Advanced
+          let filteredContents = allContents;
+          if (exercise.filterQuestions && exercise.filterQuestions.length > 0) {
+            console.log('🔍 Tất cả câu hỏi từ API:', allContents.map(c => c.label));
+            console.log('🎯 Câu hỏi cần lọc:', exercise.filterQuestions);
+            
+            const filterSet = new Set(exercise.filterQuestions.map((q: string) => q.toLowerCase().trim()));
+            filteredContents = allContents.filter(item => 
+              filterSet.has(item.label.toLowerCase().trim())
+            );
+            
+            console.log('✅ Câu hỏi sau khi lọc:', filteredContents.map(c => c.label));
+            console.log(`📊 Tổng số: ${filteredContents.length}/${allContents.length}`);
+          }
+          
+          setAvailableSigns(filteredContents);
+          availableSignsRef.current = filteredContents;
           setIsLoading(false);
         } catch (error) {
           console.error('Error loading vocabulary:', error);
@@ -630,6 +656,7 @@ export default function PracticePage() {
                   onCorrectSign={handleCorrectSign}
                   onIncorrectSign={() => {}}
                   sessionId={sessionId}
+                  autoAdvanceImmediate={true}
                 />
               ) : (
                 /* Newbie/Basic: dùng SignCamera (real-time) */
