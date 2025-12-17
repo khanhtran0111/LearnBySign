@@ -499,8 +499,8 @@ export function SignCameraSequence({
       <div className="p-2 border-t bg-gray-50">
         <p className="text-center text-sm text-gray-700">{statusMessage}</p>
         
-        {/* Prediction result */}
-        {prediction && (
+        {/* Prediction result - ẨN ĐI THEO YÊU CẦU */}
+        {/* {prediction && (
           <div className={`mt-2 p-2 rounded text-center ${prediction.success ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>
             <p className="font-medium">
               {prediction.label || "Không nhận diện được"}
@@ -509,7 +509,7 @@ export function SignCameraSequence({
               Độ tin cậy: {(prediction.confidence * 100).toFixed(1)}%
             </p>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Controls */}
