@@ -204,6 +204,8 @@ model.compile(
 | Các cử chỉ tương tự nhau | Tăng kích thước dataset, fine-tune model |
 | Real-time performance | Model compression, quantization |
 
+**Xem chi tiết quy trình xây dựng và training 2 model AI**: [GitHub Repository - LBS AI Models](https://github.com/khanhtran0111/LBS)
+
 ---
 
 ## Tính năng
