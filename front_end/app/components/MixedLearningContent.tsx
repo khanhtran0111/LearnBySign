@@ -216,12 +216,12 @@ export function MixedLearningContent({ level, items, onPlayLesson, onStartExerci
     },
     basic: {
       title: "Cấp độ Basic",
-      subtitle: "Học từ vựng tiếng Anh cơ bản",
+      subtitle: "Học từ vựng tiếng Việt cơ bản",
       color: "from-blue-500 to-blue-600",
     },
     advanced: {
       title: "Cấp độ Advanced",
-      subtitle: "Học câu và giao tiếp hoàn chỉnh",
+      subtitle: "Học từ vựng nâng cao và Giao tiếp cơ bản",
       color: "from-purple-500 to-purple-600",
     },
   };
