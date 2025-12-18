@@ -29,20 +29,18 @@ export class GameService {
   ): Promise<GameQuestion[]> {
     let lessonIds: string[] = [];
     
-    // Xác định lesson IDs theo level
     switch (level) {
       case 'newbie':
-        lessonIds = ['n1', 'n2', 'n3', 'n4']; // Chữ cái + số
+        lessonIds = ['n1', 'n2', 'n3', 'n4'];
         break;
       case 'basic':
-        lessonIds = ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7']; // Từ vựng
+        lessonIds = ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7'];
         break;
       case 'advanced':
-        lessonIds = ['a1']; // Câu giao tiếp
+        lessonIds = ['a1'];
         break;
     }
 
-    // Lấy tất cả contents từ các lessons
     const allContents: Array<{ label: string; videoUrl: string }> = [];
     
     for (const lessonId of lessonIds) {
@@ -59,21 +57,16 @@ export class GameService {
       }
     }
 
-    // Nếu không có câu hỏi, trả về mảng rỗng
     if (allContents.length === 0) {
       console.warn(`No content found for level: ${level}`);
       return [];
     }
 
-    // Tạo câu hỏi trắc nghiệm với 4 đáp án
-    // Cho phép lặp lại các item nhưng với đáp án khác nhau
     const questions: GameQuestion[] = [];
     
     for (let i = 0; i < count; i++) {
-      // Random chọn 1 câu hỏi từ pool
       const correctContent = allContents[Math.floor(Math.random() * allContents.length)];
       
-      // Tạo 3 đáp án sai từ pool, chắc chắn khác với đáp án đúng
       const wrongOptionsSet = new Set<string>();
       while (wrongOptionsSet.size < 3) {
         const wrongContent = allContents[Math.floor(Math.random() * allContents.length)];
@@ -84,7 +77,6 @@ export class GameService {
       
       const wrongOptions = Array.from(wrongOptionsSet);
 
-      // Mix correct answer vào vị trí random
       const allOptions = [correctContent.label, ...wrongOptions];
       const shuffledOptions = this.shuffleArray(allOptions);
 

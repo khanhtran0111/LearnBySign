@@ -6,7 +6,6 @@ import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 
-// MediaPipe Hands types (will be loaded dynamically)
 declare global {
   interface Window {
     Hands?: any;
@@ -60,8 +59,8 @@ export function SignCamera({
   const animationRef = useRef<number | undefined>(undefined);
   const lastPredictionTime = useRef<number>(0);
   const isProcessingCorrect = useRef<boolean>(false);
-  const targetSignRef = useRef<string>(targetSign); // Track current target
-  const PREDICTION_INTERVAL = 200; // 5 predictions per second
+  const targetSignRef = useRef<string>(targetSign);
+  const PREDICTION_INTERVAL = 200;
 
   // Update targetSignRef when targetSign changes
   useEffect(() => {
@@ -69,25 +68,19 @@ export function SignCamera({
     isProcessingCorrect.current = false;
     setCurrentPrediction(null);
     setShowSuccess(false);
-    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-    console.log(`🔄 TARGET CHANGED TO: ${targetSign}`);
-    console.log(`🆔 Session ID: ${sessionId}`);
-    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
   }, [targetSign, sessionId]);
 
-  // Load MediaPipe scripts
   useEffect(() => {
     const loadMediaPipe = async () => {
       if (typeof window === "undefined") return;
 
-      // Check if already loaded
       if (window.Hands) {
         setIsLoading(false);
         return;
       }
 
       try {
-        // Load MediaPipe Hands
         const script1 = document.createElement("script");
         script1.src = "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js";
         script1.crossOrigin = "anonymous";
@@ -98,7 +91,6 @@ export function SignCamera({
         script2.crossOrigin = "anonymous";
         document.body.appendChild(script2);
 
-        // Wait for scripts to load
         await new Promise((resolve) => {
           script2.onload = resolve;
         });
@@ -113,14 +105,12 @@ export function SignCamera({
     loadMediaPipe();
   }, []);
 
-  // Initialize camera and MediaPipe
   const startCamera = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current || !window.Hands) return;
 
     try {
       setError("");
 
-      // Get camera stream
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: 640,
@@ -132,7 +122,6 @@ export function SignCamera({
       streamRef.current = stream;
       videoRef.current.srcObject = stream;
 
-      // Initialize MediaPipe Hands
       const hands = new window.Hands({
         locateFile: (file: string) => {
           return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
@@ -156,7 +145,6 @@ export function SignCamera({
     }
   }, []);
 
-  // Process MediaPipe results
   const onResults = useCallback(
     async (results: any) => {
       if (!canvasRef.current) return;
@@ -164,20 +152,14 @@ export function SignCamera({
       const canvasCtx = canvasRef.current.getContext("2d");
       if (!canvasCtx || !videoRef.current) return;
 
-      // Draw video frame
       canvasCtx.save();
       canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
       canvasCtx.drawImage(results.image, 0, 0, canvasRef.current.width, canvasRef.current.height);
 
       if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        if (!handDetected) {
-          console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-          console.log("👋 PHÁT HIỆN TAY!");
-          console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        }
+
         setHandDetected(true);
 
-        // Draw hand landmarks
         for (const landmarks of results.multiHandLandmarks) {
           if (window.drawConnectors && window.drawLandmarks && window.HAND_CONNECTIONS) {
             window.drawConnectors(canvasCtx, landmarks, window.HAND_CONNECTIONS, {
@@ -188,16 +170,12 @@ export function SignCamera({
           }
         }
 
-        // Send to API for prediction (throttled) - SKIP if processing correct answer
         if (!isProcessingCorrect.current) {
           const now = Date.now();
           if (now - lastPredictionTime.current > PREDICTION_INTERVAL) {
             lastPredictionTime.current = now;
-            console.log(`⏱️ Gửi request dự đoán (${new Date().toLocaleTimeString()})...`);
             await predictSign(results.multiHandLandmarks[0], results.multiHandedness[0]);
           }
-        } else {
-          console.log(`🚫 Đang xử lý câu trả lời đúng, bỏ qua prediction...`);
         }
       } else {
         if (handDetected) {
@@ -246,69 +224,39 @@ export function SignCamera({
 
       const result: PredictionResult = await response.json();
       
-      // Get current target from ref (updated value)
       const currentTarget = targetSignRef.current;
-      
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("🤖 MODEL PREDICTION:");
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log(`👉 Dự đoán: ${result.label}`);
-      console.log(`📊 Độ tin cậy: ${(result.confidence * 100).toFixed(1)}%`);
-      console.log(`🎯 Mục tiêu: ${currentTarget}`);
-      console.log(`✨ Ổn định: ${result.isStable ? 'CÓ' : 'CHƯA'}`);
-      if (result.finalLabel) {
-        console.log(`✅ Nhãn cuối: ${result.finalLabel}`);
-        const isCorrect = result.finalLabel === currentTarget;
-        console.log(`${isCorrect ? '🎉 ĐÚNG!' : '❌ SAI!'}`);
-      }
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       
       setCurrentPrediction(result);
 
-      // Check if correct sign - trigger when confidence is high enough
       const useLabel = result.finalLabel || result.label;
-      const highConfidence = result.confidence >= 0.85; // 85% confidence threshold
+      const highConfidence = result.confidence >= 0.85;
       
       if (useLabel && currentTarget && highConfidence && !isProcessingCorrect.current) {
         if (useLabel === currentTarget) {
-          console.log(`🎊 CHÍNH XÁC! (${(result.confidence * 100).toFixed(0)}%) - Tự động chuyển sang cử chỉ tiếp theo...`);
-          
-          // Prevent multiple triggers - block immediately
           isProcessingCorrect.current = true;
-          console.log(`🔒 LOCKED - Không nhận predictions mới cho đến khi target thay đổi`);
           
-          // Show success animation
           if (showSuccessAnimation) {
             setShowSuccess(true);
-            // Reset prediction state to avoid stale data
             setCurrentPrediction(null);
-            // Giảm thời gian animation xuống 1s
             setTimeout(() => {
               setShowSuccess(false);
               if (autoAdvance) {
-                console.log(`🚀 Gọi onCorrectSign() - chuyển sang câu mới...`);
                 onCorrectSign();
               }
-              // Note: isProcessingCorrect will be reset when target changes
-            }, 1000); // Giảm từ 1.5s xuống 1s
+            }, 1000);
           } else {
             setCurrentPrediction(null);
             if (autoAdvance) {
               onCorrectSign();
             }
-            // Note: isProcessingCorrect will be reset when target changes
           }
         }
-        // Bỏ đếm câu sai - không gọi onIncorrectSign nữa
       }
     } catch (err) {
-      console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.error("❌ LỖI DỰ ĐOÁN:", err);
-      console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.error("Prediction error:", err);
     }
   };
 
-  // Animation loop
   useEffect(() => {
     if (!isRunning || !handsRef.current || !videoRef.current) return;
 

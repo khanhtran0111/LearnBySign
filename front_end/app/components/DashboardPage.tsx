@@ -14,8 +14,6 @@ import { lessonsData } from '@/app/data/lessonsData';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
-
-//Interfaces
 interface User {
    fullName: string;
    email: string;
@@ -66,7 +64,6 @@ const fetchUserProfile = async (token: string): Promise<User> => {
 
 // Function tính toán stats từ completed lessons
 const calculateDashboardStats = (completedLessons: Set<string>): DashboardStats => {
-  // Đếm số lesson đã hoàn thành theo từng level (chỉ lesson, không tính practice)
   const newbieLessons = lessonsData.newbie.flatMap(g => g.lessons.filter(l => l.type === 'lesson'));
   const basicLessons = lessonsData.basic.flatMap(g => g.lessons.filter(l => l.type === 'lesson'));
   const advancedLessons = lessonsData.advanced.flatMap(g => g.lessons.filter(l => l.type === 'lesson'));
@@ -84,8 +81,8 @@ const calculateDashboardStats = (completedLessons: Set<string>): DashboardStats 
   const overallProgress = totalLessons > 0 ? Math.round((totalCompleted / totalLessons) * 100) : 0;
 
   return {
-    streak: 0, // TODO: Tính streak từ API nếu có
-    totalScore: totalCompleted * 10, // Mỗi bài = 10 điểm
+    streak: 0,
+    totalScore: totalCompleted * 10,
     totalCompleted,
     overallProgress,
     levels: {
@@ -125,7 +122,6 @@ export function DashboardPage({ onSignOut, defaultLevel }: DashboardPageProps) {
 
   const currentLessons = lessonsData[activeLevel] || [];
 
-  // Mapping slug cố định cho lessons
   const lessonSlugById: Record<string, string> = {
     n1: 'n1-chu-cai-a-h',
     n2: 'n2-chu-cai-i-p',
@@ -155,7 +151,6 @@ export function DashboardPage({ onSignOut, defaultLevel }: DashboardPageProps) {
 
   const handlePlayLesson = (lesson: Lesson) => {
     if (lesson.isLocked) {
-      // Hiển thị thông báo chi tiết hơn
       const message = activeLevel === 'basic' 
         ? '🔒 Bài học này chưa mở khóa!\n\nĐể học Basic, bạn cần hoàn thành TẤT CẢ các bài Newbie (n1-n4) trước.'
         : activeLevel === 'advanced'
@@ -166,7 +161,6 @@ export function DashboardPage({ onSignOut, defaultLevel }: DashboardPageProps) {
       return;
     }
     
-    // Xác định slug dựa trên type
     if (lesson.type === 'practice') {
       const slug = practiceSlugById[lesson.id] ?? lesson.id;
       router.push(`/dashboard/practice/${slug}`);
@@ -202,29 +196,23 @@ export function DashboardPage({ onSignOut, defaultLevel }: DashboardPageProps) {
   
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
-    console.log('[DashboardPage] Checking auth, token:', token ? 'exists' : 'none');
     
     if (!token) {
-      console.log('[DashboardPage] No token, redirecting to login');
       router.replace('/login');
       return;
     }
 
     const loadProfile = async () => {
       try {
-        console.log('[DashboardPage] Loading user profile...');
         const profileResponse = await axios.get(`${BACKEND_URL}/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const profileData = profileResponse.data;
         setUser(profileData);
         
-        // Lấy userId từ profile response
         const userIdFromProfile = profileResponse.data._id || profileResponse.data.id;
         setUserId(userIdFromProfile);
-        console.log('[DashboardPage] User profile loaded:', profileData.email, 'userId:', userIdFromProfile);
 
-        console.log('[DashboardPage] Loading progress...');
         const progressResponse = await axios.get(`${BACKEND_URL}/progress`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -237,12 +225,9 @@ export function DashboardPage({ onSignOut, defaultLevel }: DashboardPageProps) {
               .map((p: any) => String(p.idLesson?.customId || p.idLesson?._id || p.idLesson))
           );
           setCompletedLessons(completed);
-          console.log('[DashboardPage] Progress loaded, completed lessons:', completed.size);
 
-          // Tính toán stats từ progress data
           const stats = calculateDashboardStats(completed);
           setDashboardStats(stats);
-          console.log('[DashboardPage] Stats calculated:', stats);
         }
 
         // Gọi API mới để lấy lessons kèm trạng thái locked
@@ -260,18 +245,14 @@ export function DashboardPage({ onSignOut, defaultLevel }: DashboardPageProps) {
       } catch (err) {
         console.error('[DashboardPage] Error loading dashboard data:', err);
         if (axios.isAxiosError(err)) {
-          console.error('[DashboardPage] API Error:', err.response?.status, err.response?.data);
-          
-          // Nếu là lỗi 401 (unauthorized), redirect về login
+
           if (err.response?.status === 401) {
             localStorage.removeItem('accessToken');
             setIsLoading(false);
-            console.log('[DashboardPage] Unauthorized, redirecting to login');
             router.replace('/login');
             return;
           }
           
-          // Nếu là lỗi khác (network, 500, etc), hiển thị thông báo lỗi
           if (err.code === 'ERR_NETWORK' || !err.response) {
             setLoadError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend đang chạy.');
           } else {
@@ -296,7 +277,6 @@ export function DashboardPage({ onSignOut, defaultLevel }: DashboardPageProps) {
     );
   }
 
-  // Hiển thị lỗi nếu không thể tải dữ liệu
   if (loadError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">

@@ -61,11 +61,6 @@ export class LessonsService {
         return deletedLesson;
     }
 
-    // --- ĐÃ XÓA HÀM syncLessonsFromSupabase CŨ TẠI ĐÂY ---
-
-    /**
-     * LOGIC MỚI: Sync contents cho các bài học đã có trong DB
-     */
     async syncLessonContents(): Promise<any> {
         const results: any[] = [];
 
@@ -94,13 +89,11 @@ export class LessonsService {
         };
 
         try {
-            // Chỉ lấy những bài học có customId (tức là bài học được tạo từ seed)
             const lessons = await this.lessonModel.find({ customId: { $exists: true } }).exec();
 
             for (const lesson of lessons) {
                 const mapping = lesson.customId ? lessonFolderMapping[lesson.customId] : undefined;
 
-                // Nếu bài học không nằm trong danh sách mapping (VD: bài practice p1, p2...), bỏ qua
                 if (!mapping) {
                     continue;
                 }
@@ -108,18 +101,13 @@ export class LessonsService {
                 try {
                     const allFiles = await this.mediaService.listFiles(mapping.folder);
 
-                    // Filter files theo mapping
                     const filteredFiles = mapping.fileFilter
                         ? allFiles.filter((f) => mapping.fileFilter!(f.name))
                         : allFiles;
 
-                    // Tạo contents array
                     const contents = filteredFiles.map((file) => this.createContentFromFile(file));
-                    
-                    // Sắp xếp contents theo label (A, B, C...)
                     contents.sort((a, b) => a.label.localeCompare(b.label, 'en', { numeric: true }));
 
-                    // Update lesson với contents mới
                     await this.lessonModel.updateOne(
                         { _id: lesson._id },
                         { $set: { contents, questionCount: contents.length } },
