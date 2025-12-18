@@ -15,26 +15,17 @@ export class ProgressService {
         @InjectModel(User.name) private userModel: Model<UserDocument>,
     ) {}
 
-    /**
-     * Lưu/Cập nhật tiến độ học tập của user
-     * - Type được lấy từ Lesson (Source of Truth), không dùng từ DTO
-     * - Nếu chưa có record: Tạo mới với completed=true
-     * - Nếu đã có: Cập nhật lastViewedAt, giữ lại score cao nhất (kỷ lục)
-     */
     async markProgress(markProgressDto: MarkProgressDto): Promise<Progress> {
         const { idUser, idLesson, correctAnswers, score } = markProgressDto;
 
-        // 1. Validate userId
         if (!mongoose.Types.ObjectId.isValid(idUser)) {
             throw new BadRequestException(`userId "${idUser}" không đúng định dạng ObjectId`);
         }
 
-        // 2. Validate & resolve lessonId, lấy type từ Lesson (Source of Truth)
         let resolvedLessonId: string;
         let lessonType: 'lesson' | 'practice';
 
         if (!mongoose.Types.ObjectId.isValid(idLesson)) {
-            // Tìm theo customId
             const lesson = await this.lessonModel.findOne({ customId: idLesson }).exec();
             if (!lesson) {
                 throw new NotFoundException(`Không tìm thấy bài học với customId: ${idLesson}`);
@@ -42,7 +33,6 @@ export class ProgressService {
             resolvedLessonId = lesson._id.toString();
             lessonType = lesson.type;
         } else {
-            // Tìm theo ObjectId
             const lesson = await this.lessonModel.findById(idLesson).exec();
             if (!lesson) {
                 throw new NotFoundException(`Không tìm thấy bài học với ID: ${idLesson}`);
@@ -51,10 +41,6 @@ export class ProgressService {
             lessonType = lesson.type;
         }
 
-        // 3. Tính điểm
-        // - Nếu có score từ DTO → dùng luôn
-        // - Nếu type=practice và có correctAnswers → tính: correctAnswers * 15
-        // - Còn lại → 0
         let calculatedScore = score ?? 0;
         if (score === undefined || score === null) {
             if (lessonType === 'practice' && correctAnswers) {
@@ -62,17 +48,14 @@ export class ProgressService {
             }
         }
 
-        // 4. Kiểm tra record hiện tại để so sánh điểm
         const existingProgress = await this.progressModel
             .findOne({ idUser, idLesson: resolvedLessonId })
             .exec();
 
-        // Giữ lại điểm cao nhất (kỷ lục)
         const finalScore = existingProgress
             ? Math.max(existingProgress.score || 0, calculatedScore)
             : calculatedScore;
 
-        // 5. Upsert progress (type lấy từ Lesson, không từ DTO)
         const progress = await this.progressModel
             .findOneAndUpdate(
                 { idUser, idLesson: resolvedLessonId },
@@ -89,7 +72,6 @@ export class ProgressService {
             )
             .exec();
 
-        // 6. Cập nhật stats cho user (chỉ cộng điểm chênh lệch)
         const pointsToAdd = existingProgress
             ? Math.max(0, calculatedScore - (existingProgress.score || 0))
             : calculatedScore;
@@ -97,7 +79,6 @@ export class ProgressService {
         if (pointsToAdd > 0) {
             await this.updateUserStats(idUser, lessonType, pointsToAdd);
         } else if (!existingProgress) {
-            // Lần đầu hoàn thành, cập nhật streak
             await this.updateUserStats(idUser, lessonType, calculatedScore);
         }
 
@@ -112,14 +93,12 @@ export class ProgressService {
         const user = await this.userModel.findById(userId);
         if (!user) return;
 
-        // Cộng điểm theo type
         if (type === 'lesson') {
             user.lessonPoints = (user.lessonPoints || 0) + points;
         } else {
             user.practicePoints = (user.practicePoints || 0) + points;
         }
 
-        // Cập nhật streak
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -138,7 +117,6 @@ export class ProgressService {
                 user.currentStreak = 1;
                 user.lastStudyDate = today;
             }
-            // diffDays === 0: không làm gì (đã học hôm nay rồi)
         } else {
             user.currentStreak = 1;
             user.lastStudyDate = today;
@@ -147,20 +125,15 @@ export class ProgressService {
         await user.save();
     }
 
-    /**
-     * Đánh dấu một content đã học (thêm vào learnedContents)
-     */
     async markContentLearned(
         idUser: string,
         idLesson: string,
         contentLabel: string,
     ): Promise<Progress> {
-        // Validate userId
         if (!mongoose.Types.ObjectId.isValid(idUser)) {
             throw new BadRequestException(`userId "${idUser}" không đúng định dạng ObjectId`);
         }
 
-        // Resolve lessonId
         let resolvedLessonId: string;
         let lessonType: 'lesson' | 'practice';
 
@@ -180,13 +153,11 @@ export class ProgressService {
             lessonType = lesson.type;
         }
 
-        // Tìm hoặc tạo progress
         let progress = await this.progressModel
             .findOne({ idUser, idLesson: resolvedLessonId })
             .exec();
 
         if (!progress) {
-            // Tạo mới nếu chưa có
             progress = new this.progressModel({
                 idUser,
                 idLesson: resolvedLessonId,
@@ -207,11 +178,7 @@ export class ProgressService {
         return progress;
     }
 
-    /**
-     * Lấy danh sách content đã học của một lesson
-     */
     async getLearnedContents(idUser: string, idLesson: string): Promise<string[]> {
-        // Resolve lessonId
         let resolvedLessonId: string;
 
         if (!mongoose.Types.ObjectId.isValid(idLesson)) {
@@ -281,9 +248,6 @@ export class ProgressService {
         }
     }
 
-    /**
-     * Lấy thống kê Dashboard cho user
-     */
     async getDashboardStats(userId: string): Promise<{
         streak: number;
         totalScore: number;
@@ -295,23 +259,18 @@ export class ProgressService {
             advanced: { completed: number; total: number; percent: number };
         };
     }> {
-        // 1. Lấy thông tin user (streak)
         const user = await this.userModel.findById(userId).exec();
         const streak = user?.currentStreak || 0;
 
-        // 2. Lấy tất cả progress của user (completed = true)
         const userProgress = await this.progressModel
             .find({ idUser: userId, completed: true })
             .exec();
 
-        // 3. Tính tổng điểm và số bài đã hoàn thành
         const totalScore = userProgress.reduce((sum, p) => sum + (p.score || 0), 0);
         const totalCompleted = userProgress.length;
 
-        // 4. Lấy danh sách lessonId đã hoàn thành
         const completedLessonIds = userProgress.map((p) => p.idLesson.toString());
 
-        // 5. Đếm số bài theo từng difficulty
         const lessonCounts = await this.lessonModel.aggregate([
             {
                 $group: {
@@ -322,7 +281,6 @@ export class ProgressService {
             },
         ]);
 
-        // 6. Tính stats cho từng level
         const levels = {
             newbie: { completed: 0, total: 0, percent: 0 },
             basic: { completed: 0, total: 0, percent: 0 },
@@ -337,7 +295,6 @@ export class ProgressService {
                 levels[difficulty].total = item.total;
                 totalLessons += item.total;
 
-                // Đếm số bài đã hoàn thành trong level này
                 const completedInLevel = item.lessonIds.filter((id: string) =>
                     completedLessonIds.includes(id),
                 ).length;
@@ -348,7 +305,6 @@ export class ProgressService {
             }
         }
 
-        // 7. Tính overall progress
         const overallProgress =
             totalLessons > 0 ? Math.round((totalCompleted / totalLessons) * 100) : 0;
 

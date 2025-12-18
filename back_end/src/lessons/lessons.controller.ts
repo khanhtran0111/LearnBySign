@@ -30,8 +30,6 @@ export class LessonsController {
         return this.lessonsService.create(createLessonDto);
     }
 
-    // --- ĐÃ XÓA ENDPOINT sync-data CŨ VÌ KHÔNG DÙNG NỮA ---
-
     @Post('sync-contents')
     @ApiOperation({
         summary: 'Đồng bộ contents cho các bài học (Grid Layout)',

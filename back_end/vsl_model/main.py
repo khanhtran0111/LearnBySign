@@ -15,17 +15,14 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS configuration for NextJS frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-# Request/Response Models
 class LandmarkPoint(BaseModel):
     x: float = Field(..., ge=0, le=1, description="X coordinate (0-1)")
     y: float = Field(..., ge=0, le=1, description="Y coordinate (0-1)")
@@ -55,7 +52,6 @@ class HealthResponse(BaseModel):
 
 @app.get("/", response_model=Dict[str, str])
 async def root():
-    """Root endpoint"""
     return {
         "service": "VSL Inference API",
         "status": "running",
@@ -65,7 +61,6 @@ async def root():
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
-    """Health check endpoint"""
     try:
         classes = vsl_inference.get_available_classes()
         return HealthResponse(
@@ -78,10 +73,6 @@ async def health_check():
 
 @app.post("/predict/features", response_model=PredictionResponse)
 async def predict_from_features(request: PredictFromFeaturesRequest):
-    """
-    Predict from pre-computed feature vector (63 floats).
-    This is the most efficient endpoint.
-    """
     try:
         result = vsl_inference.predict_from_features(request.features)
         return PredictionResponse(**result)
